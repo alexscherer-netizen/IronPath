@@ -330,6 +330,42 @@ svg.chart{width:100%;height:180px;display:block}
 .warmup-row .wr-pct{font-weight:700;color:var(--ink-2);font-size:13px}
 .warmup-row .wr-w{font-family:var(--display);font-weight:800;font-size:17px}
 .warmup-row .wr-reps{font-size:12px;color:var(--ink-3)}
+/* ── Eigene Übungen ── */
+.custom-ex-form{display:grid;gap:10px;margin-bottom:14px}
+.custom-ex-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.custom-ex-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:12px;border:1.5px solid var(--line)}
+.custom-ex-item .ce-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.custom-ex-item .ce-name{flex:1;font-weight:600;font-size:13px}
+.custom-ex-item .ce-muscle{font-size:11px;color:var(--ink-3)}
+.custom-ex-item .ce-del{background:none;border:none;color:var(--accent);font-size:18px;line-height:1;cursor:pointer;padding:0 4px}
+
+/* ── Foto-Tracker ── */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.photo-card{border-radius:10px;overflow:hidden;position:relative;aspect-ratio:1;background:var(--line)}
+.photo-card img{width:100%;height:100%;object-fit:cover}
+.photo-card .photo-date{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:10px;padding:3px 5px;text-align:center}
+.photo-card .photo-del{position:absolute;top:4px;right:4px;background:rgba(200,0,0,.8);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;display:grid;place-items:center;cursor:pointer}
+.photo-add-btn{border:2px dashed var(--line);border-radius:10px;aspect-ratio:1;display:grid;place-items:center;font-size:28px;color:var(--ink-3);cursor:pointer;background:none;width:100%}
+
+/* ── Muskel-Frequenz ── */
+.freq-bar-wrap{margin-bottom:10px}
+.freq-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.freq-bar-track{background:var(--line);border-radius:99px;height:8px;overflow:hidden}
+.freq-bar-fill{height:100%;border-radius:99px;transition:.3s}
+.freq-status{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.freq-status.ok{color:var(--green)}
+.freq-status.low{color:#f59e0b}
+.freq-status.over{color:var(--accent)}
+
+/* ── Streak-Kalender ── */
+.streak-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.streak-cal-day{aspect-ratio:1;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:600;background:var(--line-2)}
+.streak-cal-day.trained{background:var(--green);color:#fff}
+.streak-cal-day.rest{background:var(--line);color:var(--ink-3)}
+.streak-cal-day.today{outline:2px solid var(--accent);outline-offset:1px}
+.streak-cal-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:2px}
+.streak-cal-labels span{text-align:center;font-size:9px;color:var(--ink-3);font-weight:600}
+
 /* Plan templates */
 
 /* ── Template / Vorlagen ── */
@@ -816,6 +852,33 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
     <div id="measureLatest" class="measure-latest"></div>
   </div>
 
+  <!-- ── Eigene Übungen ── -->
+  <div class="section-title">✏️ Eigene Übungen</div>
+  <div class="card" style="padding:14px 16px">
+    <button class="btn-primary" style="width:100%;font-size:13px;margin-bottom:4px" onclick="openCustomExSheet()">+ Neue Übung erstellen</button>
+    <div id="customExList"></div>
+  </div>
+
+  <!-- ── Fortschrittsfotos ── -->
+  <div class="section-title">📸 Fortschritts-Fotos</div>
+  <div class="card" style="padding:14px 16px">
+    <div id="photoGrid"></div>
+    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="addPhoto(event)">
+  </div>
+
+  <!-- ── Muskel-Frequenz ── -->
+  <div class="section-title">📊 Muskel-Frequenz-Analyse</div>
+  <div class="card" style="padding:14px 16px">
+    <div style="font-size:11px;color:var(--ink-3);margin-bottom:10px">Letzte 7 Tage • Empfehlung: 1–3×/Woche pro Muskel</div>
+    <div id="freqBars"></div>
+  </div>
+
+  <!-- ── Streak-Kalender ── -->
+  <div class="section-title">📅 Streak-Kalender</div>
+  <div class="card" style="padding:14px 16px">
+    <div id="streakCalendar"></div>
+  </div>
+
   <div class="section-title">🧮 Tools</div>
   <div class="card" style="padding:6px 0">
     <button class="set-row-btn" onclick="openPlateCalc()">
@@ -1050,6 +1113,8 @@ let state = {
   addedToday: [],     // transient
   nutri: { date:'', water:0, kcal:0, kcalGoal:2200, waterGoal:2500 },
   measures: {},  // { bodyweight:[{date,val}], biceps:[...], ... }
+  customEx: [],  // [{id,name,muscle,lvl,desc}]
+  photos: [],    // [{date,dataUrl,note}]
   weekGoal: 3,
   seenBadges: [], // bereits gefeierte Achievements
   weekPlan: {},   // { MO:dayId, DI:dayId, ... } – '' / 'rest' / dayId
@@ -1063,14 +1128,16 @@ function load(){
       if(d.measures)state.measures=d.measures;
       if(typeof d.weekGoal==='number')state.weekGoal=d.weekGoal;
       if(d.seenBadges)state.seenBadges=d.seenBadges;
-      if(d.weekPlan)state.weekPlan=d.weekPlan;}
+      if(d.weekPlan)state.weekPlan=d.weekPlan;
+      if(d.customEx)state.customEx=d.customEx;
+      if(d.photos)state.photos=d.photos;}
   }catch(e){}
   // reset daily counters if a new day started (keep goals)
   if(state.nutri.date!==todayStr()){
     state.nutri.date=todayStr(); state.nutri.water=0; state.nutri.kcal=0;
   }
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify({plan:state.plan, logs:state.logs, nutri:state.nutri, measures:state.measures, weekGoal:state.weekGoal, seenBadges:state.seenBadges, weekPlan:state.weekPlan})); }
+function save(){ localStorage.setItem(KEY, JSON.stringify({plan:state.plan, logs:state.logs, nutri:state.nutri, measures:state.measures, weekGoal:state.weekGoal, seenBadges:state.seenBadges, weekPlan:state.weekPlan, customEx:state.customEx, photos:state.photos})); }
 load();
 
 /* ═══════════════ NAV ═══════════════ */
@@ -1176,7 +1243,7 @@ function setLvl(l){lvlFilter=l;renderLvlFilters();renderExercises();}
 
 function renderExercises(){
   const q=(document.getElementById('exSearch').value||'').toLowerCase();
-  let list=EXERCISES.filter(e=>{
+  let list=allExercises().filter(e=>{
     if(selMuscle && e.muscle!==selMuscle)return false;
     if(lvlFilter!=='alle' && e.lvl!==lvlFilter)return false;
     if(q && !e.name.toLowerCase().includes(q) && !MUSCLES[e.muscle].name.toLowerCase().includes(q))return false;
@@ -1413,7 +1480,7 @@ function renderPickerList(){
   const day=state.plan.find(d=>d.id===exPickerCtx.dayId);
   const have=new Set(day.ex.map(x=>x.id));
   const q=(document.getElementById('pickerSearch').value||'').toLowerCase();
-  const list=EXERCISES.filter(e=>{
+  const list=allExercises().filter(e=>{
     if(pickerMuscle&&e.muscle!==pickerMuscle)return false;
     if(q&&!e.name.toLowerCase().includes(q)&&!MUSCLES[e.muscle].name.toLowerCase().includes(q))return false;
     return true;
@@ -2627,6 +2694,198 @@ function setSectionIcons(){
 }
 
 /* ── Ernährung ── */
+
+/* ═══════════════ EIGENE ÜBUNGEN ═══════════════ */
+function allExercises(){
+  return [...EXERCISES, ...state.customEx.map(e=>({...e, custom:true}))];
+}
+function openCustomExSheet(){
+  openSheet(`
+    <h2>Eigene Übung erstellen</h2>
+    <div class="sh-sub">Füge eine Übung hinzu, die nicht in der Bibliothek ist.</div>
+    <div class="field"><label>Name</label>
+      <input id="ceName" placeholder="z.B. Kabel-Bizeps-Curl" autocomplete="off"></div>
+    <div class="field"><label>Muskelgruppe</label>
+      <select id="ceMuscle">
+        ${Object.entries(MUSCLES).map(([k,m])=>`<option value="${k}">${m.name}</option>`).join('')}
+      </select></div>
+    <div class="field"><label>Niveau</label>
+      <select id="ceLvl">
+        <option value="Anfänger">Anfänger</option>
+        <option value="Mittel">Mittel</option>
+        <option value="Fortgeschritten">Fortgeschritten</option>
+      </select></div>
+    <div class="field"><label>Beschreibung (optional)</label>
+      <input id="ceDesc" placeholder="Ausführungstipps..."></div>
+    <button class="btn-primary" onclick="saveCustomEx()">Übung speichern</button>
+  `);
+  setTimeout(()=>document.getElementById('ceName')?.focus(),300);
+}
+function saveCustomEx(){
+  const name=(document.getElementById('ceName').value||'').trim();
+  if(!name){toast('Bitte Namen eingeben');return;}
+  const muscle=document.getElementById('ceMuscle').value;
+  const lvl=document.getElementById('ceLvl').value;
+  const desc=document.getElementById('ceDesc').value;
+  const ex={id:'cx'+Date.now(),name,muscle,lvl,desc,sets:3,reps:'10-12',custom:true};
+  state.customEx.push(ex);
+  save(); closeSheet(); renderMore();
+  toast('Übung "'+name+'" gespeichert');
+}
+function deleteCustomEx(id){
+  state.customEx=state.customEx.filter(e=>e.id!==id);
+  save(); renderMore(); renderExercises();
+}
+function renderCustomExList(){
+  const el=document.getElementById('customExList'); if(!el)return;
+  if(!state.customEx.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--ink-3);padding:4px 0">Noch keine eigenen Übungen.</div>';
+    return;
+  }
+  el.innerHTML='<div class="custom-ex-list">'+state.customEx.map(e=>`
+    <div class="custom-ex-item">
+      <div class="ce-dot" style="background:${MUSCLES[e.muscle]?.color||'#888'}"></div>
+      <div style="flex:1">
+        <div class="ce-name">${e.name}</div>
+        <div class="ce-muscle">${MUSCLES[e.muscle]?.name||e.muscle} · ${e.lvl}</div>
+      </div>
+      <button class="ce-del" onclick="deleteCustomEx('${e.id}')">×</button>
+    </div>`).join('')+'</div>';
+}
+
+/* ═══════════════ FORTSCHRITTS-FOTOS ═══════════════ */
+function addPhoto(evt){
+  const file=evt.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    // Komprimieren auf max 400px
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const max=400;
+      let w=img.width,h=img.height;
+      if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.75);
+      state.photos.unshift({date:new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}),dataUrl:compressed,note:''});
+      save(); renderPhotoGrid(); toast('Foto gespeichert');
+    };
+    img.src=dataUrl;
+  };
+  reader.readAsDataURL(file);
+  evt.target.value='';
+}
+function deletePhoto(idx){
+  state.photos.splice(idx,1);
+  save(); renderPhotoGrid();
+}
+function renderPhotoGrid(){
+  const el=document.getElementById('photoGrid'); if(!el)return;
+  const addBtn='<button class="photo-add-btn" onclick="document.getElementById(&quot;photoInput&quot;).click()" title="Foto hinzufügen">📸</button>';
+  const cards=state.photos.map((p,i)=>`
+    <div class="photo-card">
+      <img src="${p.dataUrl}" alt="Foto ${i+1}">
+      <div class="photo-date">${p.date}</div>
+      <button class="photo-del" onclick="deletePhoto(${i})">×</button>
+    </div>`).join('');
+  el.innerHTML='<div class="photo-grid">'+addBtn+cards+'</div>';
+}
+
+/* ═══════════════ MUSKEL-FREQUENZ-ANALYSE ═══════════════ */
+function renderFreqBars(){
+  const el=document.getElementById('freqBars'); if(!el)return;
+  // Logs der letzten 14 Tage
+  const logs14=state.logs.filter(l=>withinDays(l.date,14));
+  // Zähle Einheiten pro Muskel
+  const counts={};
+  Object.keys(MUSCLES).forEach(k=>counts[k]=0);
+  logs14.forEach(l=>l.entries.forEach(e=>{
+    if(counts[e.muscle]!==undefined) counts[e.muscle]++;
+  }));
+  // Sortiert nach Häufigkeit
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  // Max 2 pro Woche = 4 in 14 Tagen
+  const recommended=4;
+  el.innerHTML=sorted.map(([k,cnt])=>{
+    const m=MUSCLES[k];
+    const pct=Math.min(100,Math.round((cnt/recommended)*100));
+    let status,statusCls;
+    if(cnt===0){status='nicht trainiert';statusCls='low';}
+    else if(cnt<2){status='zu selten';statusCls='low';}
+    else if(cnt<=6){status='optimal';statusCls='ok';}
+    else{status='viel';statusCls='over';}
+    return `<div class="freq-bar-wrap">
+      <div class="freq-bar-label">
+        <span style="font-weight:600">${m.name}</span>
+        <span><span class="freq-status ${statusCls}">${status}</span> &nbsp;${cnt}× in 14T</span>
+      </div>
+      <div class="freq-bar-track">
+        <div class="freq-bar-fill" style="width:${pct}%;background:${cnt===0?'var(--line)':cnt<=6?m.color:'var(--accent)'}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════ STREAK-KALENDER ═══════════════ */
+function renderStreakCalendar(){
+  const el=document.getElementById('streakCalendar'); if(!el)return;
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  // Trainingstage als Set (ISO-Datum)
+  const trainedSet=new Set(state.logs.map(l=>{
+    const d=new Date(l.date);d.setHours(0,0,0,0);return d.toISOString().slice(0,10);
+  }));
+  // Letzten 5 Wochen (35 Tage)
+  const daysToShow=35;
+  const startDay=new Date(today);
+  startDay.setDate(today.getDate()-(daysToShow-1));
+  // Zum Montag dieser Woche runden
+  const mondayOffset=(startDay.getDay()+6)%7;
+  startDay.setDate(startDay.getDate()-mondayOffset);
+
+  const days=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(startDay);
+    d.setDate(startDay.getDate()+i);
+    if(d>new Date(today.getTime()+86400000)) break;
+    days.push(d);
+  }
+
+  const dayLabels=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const labelsHtml='<div class="streak-cal-labels">'+dayLabels.map(d=>`<span>${d}</span>`).join('')+'</div>';
+
+  const cells=days.map(d=>{
+    const iso=d.toISOString().slice(0,10);
+    const isTrained=trainedSet.has(iso);
+    const isToday=d.getTime()===today.getTime();
+    const isFuture=d>today;
+    let cls='streak-cal-day';
+    if(isFuture) cls+=' rest';
+    else if(isTrained) cls+=' trained';
+    if(isToday) cls+=' today';
+    const label=d.getDate();
+    return `<div class="${cls}" title="${iso}">${label}</div>`;
+  }).join('');
+
+  // Streak berechnen
+  let streak=0;
+  const check=new Date(today);
+  while(trainedSet.has(check.toISOString().slice(0,10))){
+    streak++;
+    check.setDate(check.getDate()-1);
+  }
+
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;color:var(--ink-3)">🟢 trainiert &nbsp; ⬜ kein Training</div>
+      <div style="font-weight:700;color:var(--accent)">🔥 ${streak} Tage Serie</div>
+    </div>
+    ${labelsHtml}
+    <div class="streak-cal-grid">${cells}</div>`;
+}
+
 function renderMore(){
   const n=state.nutri;
   document.getElementById('waterMl').textContent=n.water;
@@ -2644,6 +2903,7 @@ function renderMore(){
   const fill=document.getElementById('kcalFill'); fill.style.width=pct+'%';
   fill.classList.toggle('over', n.kcal>n.kcalGoal);
   fillMeasurePicker(); drawMeasureChart();
+  renderCustomExList(); renderPhotoGrid(); renderFreqBars(); renderStreakCalendar();
   setSectionIcons();
 }
 function addWater(ml){ state.nutri.water+=ml; save(); renderMore(); }
