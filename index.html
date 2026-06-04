@@ -331,6 +331,26 @@ svg.chart{width:100%;height:180px;display:block}
 .warmup-row .wr-w{font-family:var(--display);font-weight:800;font-size:17px}
 .warmup-row .wr-reps{font-size:12px;color:var(--ink-3)}
 /* Plan templates */
+
+/* ── Template / Vorlagen ── */
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.tpl-card{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 12px;cursor:pointer;text-align:left;transition:.15s}
+.tpl-card:hover,.tpl-card.sel{border-color:var(--accent);background:var(--accent-soft)}
+.tpl-card .tc-icon{font-size:22px;margin-bottom:4px}
+.tpl-card .tc-name{font-weight:700;font-size:13px;margin-bottom:2px}
+.tpl-card .tc-sub{font-size:11px;color:var(--ink-3)}
+.lvl-tabs{display:flex;gap:8px;margin-bottom:14px}
+.lvl-tab{flex:1;padding:9px 0;border-radius:10px;border:2px solid var(--line);font-weight:700;font-size:13px;background:var(--surface);cursor:pointer;transition:.15s}
+.lvl-tab.sel{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.rhythm-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.rday{width:40px;height:40px;border-radius:10px;border:2px solid var(--line);font-size:12px;font-weight:700;background:var(--surface);cursor:pointer;transition:.15s;display:grid;place-items:center}
+.rday.train{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.rday.rest{border-color:#d1d5db;background:#f3f4f6;color:#9ca3af}
+.rday.today{box-shadow:0 0 0 2px var(--accent)}
+.plan-wizard-hint{font-size:12px;color:var(--ink-3);margin-bottom:10px;line-height:1.5}
+.plan-section{margin-bottom:18px}
+.plan-section-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+
 .tmpl-card{border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-bottom:11px;background:var(--surface-2)}
 .tmpl-card h3{font-size:16px;margin-bottom:3px}
 .tmpl-card .tc-desc{font-size:12.5px;color:var(--ink-2);margin-bottom:10px}
@@ -674,6 +694,15 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
   <div class="page-head">
     <h2>Meine Trainingstage</h2>
     <p>Baue deine Trainings-Vorlagen und füge Übungen hinzu.</p>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:4px">
+    <button class="btn-primary" style="flex:1;font-size:13px;padding:10px 0" onclick="openTemplateWizard()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:5px"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Vorlagen & Pläne
+    </button>
+    <button class="btn-ghost" style="flex:1;font-size:13px;padding:10px 0;border:1.5px solid var(--line)" onclick="openRhythmSheet()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Wochenrhythmus
+    </button>
   </div>
 
   <div id="planList"></div>
@@ -1568,6 +1597,290 @@ function createDay(prefillEx){
   state.plan.push(day);save();closeSheet();renderPlan();toast('„'+name+'" erstellt');
 }
 
+/* ═══════════════ PLAN-VORLAGEN & WIZARD ═══════════════ */
+const PLAN_TEMPLATES = {
+  ppl: {
+    name: 'Push / Pull / Legs',
+    icon: '💪',
+    desc: '3-Tage-Split, klassisch',
+    levels: {
+      beginner: [
+        { name:'Push', exercises:['bench-press','incline-dumbbell-press','lateral-raise','tricep-pushdown','overhead-press'] },
+        { name:'Pull', exercises:['pull-up','barbell-row','face-pull','bicep-curl','hammer-curl'] },
+        { name:'Legs', exercises:['squat','leg-press','romanian-deadlift','leg-extension','calf-raise'] },
+      ],
+      advanced: [
+        { name:'Push A', exercises:['bench-press','incline-dumbbell-press','overhead-press','lateral-raise','tricep-pushdown','cable-fly'] },
+        { name:'Pull A', exercises:['pull-up','barbell-row','face-pull','bicep-curl','hammer-curl','rear-delt-fly'] },
+        { name:'Legs A', exercises:['squat','leg-press','romanian-deadlift','leg-extension','leg-curl','calf-raise'] },
+        { name:'Push B', exercises:['overhead-press','incline-bench-press','cable-fly','lateral-raise','tricep-dip','close-grip-bench'] },
+        { name:'Pull B', exercises:['deadlift','pull-up','seated-cable-row','face-pull','bicep-curl','reverse-curl'] },
+        { name:'Legs B', exercises:['front-squat','hack-squat','leg-curl','leg-extension','walking-lunge','standing-calf-raise'] },
+      ]
+    },
+    rhythms: {
+      beginner: { MO:'0', MI:'1', FR:'2' },
+      advanced: { MO:'0', DI:'1', MI:'2', DO:'rest', FR:'3', SA:'4', SO:'5' }
+    }
+  },
+  upper_lower: {
+    name: 'Ober- / Unterkörper',
+    icon: '⚡',
+    desc: '4-Tage-Split, ausgewogen',
+    levels: {
+      beginner: [
+        { name:'Oberkörper A', exercises:['bench-press','barbell-row','overhead-press','bicep-curl','tricep-pushdown'] },
+        { name:'Unterkörper A', exercises:['squat','romanian-deadlift','leg-press','calf-raise'] },
+        { name:'Oberkörper B', exercises:['incline-dumbbell-press','pull-up','lateral-raise','hammer-curl','tricep-dip'] },
+        { name:'Unterkörper B', exercises:['deadlift','leg-curl','leg-extension','walking-lunge','calf-raise'] },
+      ],
+      advanced: [
+        { name:'Oberkörper Stärke', exercises:['bench-press','barbell-row','overhead-press','weighted-dip','pull-up','bicep-curl'] },
+        { name:'Unterkörper Stärke', exercises:['squat','deadlift','leg-press','calf-raise','leg-curl'] },
+        { name:'Oberkörper Hypertrophie', exercises:['incline-dumbbell-press','cable-row','lateral-raise','face-pull','hammer-curl','tricep-pushdown','cable-fly'] },
+        { name:'Unterkörper Hypertrophie', exercises:['front-squat','romanian-deadlift','leg-extension','leg-curl','walking-lunge','standing-calf-raise'] },
+      ]
+    },
+    rhythms: {
+      beginner: { MO:'0', DI:'1', DO:'2', FR:'3' },
+      advanced: { MO:'0', DI:'1', MI:'rest', DO:'2', FR:'3', SA:'rest', SO:'rest' }
+    }
+  },
+  fullbody: {
+    name: 'Ganzkörper',
+    icon: '🔥',
+    desc: '3×/Woche, ideal für Einsteiger',
+    levels: {
+      beginner: [
+        { name:'Ganzkörper A', exercises:['squat','bench-press','barbell-row','overhead-press','bicep-curl','tricep-pushdown'] },
+        { name:'Ganzkörper B', exercises:['deadlift','incline-dumbbell-press','pull-up','lateral-raise','hammer-curl','calf-raise'] },
+        { name:'Ganzkörper C', exercises:['leg-press','bench-press','barbell-row','overhead-press','bicep-curl','tricep-dip'] },
+      ],
+      advanced: [
+        { name:'Ganzkörper Kraft', exercises:['squat','bench-press','deadlift','overhead-press','pull-up','bicep-curl','tricep-pushdown'] },
+        { name:'Ganzkörper Pump', exercises:['leg-press','incline-dumbbell-press','cable-row','lateral-raise','face-pull','hammer-curl','cable-fly'] },
+        { name:'Ganzkörper Power', exercises:['front-squat','close-grip-bench','romanian-deadlift','push-press','weighted-chin-up','reverse-curl'] },
+      ]
+    },
+    rhythms: {
+      beginner: { MO:'0', MI:'1', FR:'2' },
+      advanced: { MO:'0', MI:'1', FR:'2' }
+    }
+  },
+  bro: {
+    name: 'Bro-Split',
+    icon: '🦁',
+    desc: '5-Tage, 1 Muskel pro Tag',
+    levels: {
+      beginner: [
+        { name:'Brust', exercises:['bench-press','incline-dumbbell-press','cable-fly'] },
+        { name:'Rücken', exercises:['pull-up','barbell-row','lat-pulldown'] },
+        { name:'Schultern', exercises:['overhead-press','lateral-raise','face-pull'] },
+        { name:'Arme', exercises:['bicep-curl','hammer-curl','tricep-pushdown','tricep-dip'] },
+        { name:'Beine', exercises:['squat','leg-press','leg-curl','calf-raise'] },
+      ],
+      advanced: [
+        { name:'Brust', exercises:['bench-press','incline-bench-press','cable-fly','dumbbell-fly','push-up'] },
+        { name:'Rücken', exercises:['deadlift','pull-up','barbell-row','seated-cable-row','face-pull','lat-pulldown'] },
+        { name:'Schultern', exercises:['overhead-press','lateral-raise','rear-delt-fly','face-pull','shrug'] },
+        { name:'Arme', exercises:['barbell-curl','hammer-curl','concentration-curl','tricep-pushdown','overhead-tricep','tricep-dip'] },
+        { name:'Beine', exercises:['squat','leg-press','romanian-deadlift','leg-extension','leg-curl','standing-calf-raise','seated-calf-raise'] },
+      ]
+    },
+    rhythms: {
+      beginner: { MO:'0', DI:'1', MI:'2', DO:'3', FR:'4' },
+      advanced: { MO:'0', DI:'1', MI:'2', DO:'3', FR:'4', SA:'rest', SO:'rest' }
+    }
+  }
+};
+
+// Übungs-IDs → bestmöglich auf EXERCISES mappen (Fallback: Name)
+function resolveExercises(ids) {
+  return ids.map(id => {
+    const ex = EXERCISES.find(e => e.id === id);
+    if (ex) return ex;
+    // Fuzzy-Fallback: Namenssuche
+    const keyword = id.replace(/-/g,' ').toLowerCase();
+    return EXERCISES.find(e => e.name.toLowerCase().includes(keyword.split('-')[0])) || null;
+  }).filter(Boolean);
+}
+
+let _wizLevel = 'beginner';
+let _wizTpl = null;
+
+function openTemplateWizard() {
+  _wizLevel = 'beginner';
+  _wizTpl = null;
+  openSheet(_buildWizardHTML());
+}
+
+function _buildWizardHTML() {
+  const tplCards = Object.entries(PLAN_TEMPLATES).map(([key, tpl]) => `
+    <div class="tpl-card${_wizTpl===key?' sel':''}" onclick="_selectTpl('${key}')">
+      <div class="tc-icon">${tpl.icon}</div>
+      <div class="tc-name">${tpl.name}</div>
+      <div class="tc-sub">${tpl.desc}</div>
+    </div>`).join('');
+
+  return `
+    <h2>Plan-Vorlage wählen</h2>
+    <div class="sh-sub">Wähle ein Schema und dein Niveau – IronPath baut den Plan automatisch.</div>
+
+    <div class="plan-section">
+      <div class="plan-section-title">Niveau</div>
+      <div class="lvl-tabs">
+        <button class="lvl-tab${_wizLevel==='beginner'?' sel':''}" onclick="_setWizLevel('beginner')">🌱 Anfänger</button>
+        <button class="lvl-tab${_wizLevel==='advanced'?' sel':''}" onclick="_setWizLevel('advanced')">⚡ Fortgeschritten</button>
+      </div>
+    </div>
+
+    <div class="plan-section">
+      <div class="plan-section-title">Trainingsschema</div>
+      <div class="tpl-grid">${tplCards}</div>
+    </div>
+
+    ${_wizTpl ? `<div class="plan-wizard-hint">
+      📋 <b>${PLAN_TEMPLATES[_wizTpl].name}</b> (${_wizLevel==='beginner'?'Anfänger':'Fortgeschritten'}):
+      ${PLAN_TEMPLATES[_wizTpl].levels[_wizLevel].length} Trainingstage werden erstellt und automatisch in den Wochenplan eingetragen.
+    </div>
+    <button class="btn-primary" onclick="_applyTemplate()">✅ Plan erstellen & Woche befüllen</button>
+    <button class="btn-ghost" style="margin-top:8px;width:100%" onclick="closeSheet()">Abbrechen</button>`
+    : `<p style="font-size:13px;color:var(--ink-3);text-align:center;padding:8px 0">⬆️ Wähle ein Schema oben aus</p>`}
+  `;
+}
+
+function _setWizLevel(lvl) {
+  _wizLevel = lvl;
+  document.getElementById('sheetInner').innerHTML = _buildWizardHTML();
+}
+function _selectTpl(key) {
+  _wizTpl = key;
+  document.getElementById('sheetInner').innerHTML = _buildWizardHTML();
+}
+
+function _applyTemplate() {
+  const tpl = PLAN_TEMPLATES[_wizTpl];
+  if (!tpl) return;
+  const days = tpl.levels[_wizLevel];
+  const rhythm = tpl.rhythms[_wizLevel];
+
+  // Bestehende Plan-Tage beibehalten, neue hinzufügen
+  const newDayIds = [];
+  days.forEach(d => {
+    const exList = resolveExercises(d.exercises);
+    const day = {
+      id: 'd' + Date.now() + Math.random().toString(36).slice(2,6),
+      name: d.name,
+      ex: exList.map(e => ({ id: e.id, name: e.name, muscle: e.muscle, sets: _wizLevel==='advanced'?4:3, reps: _wizLevel==='advanced'?'6-10':'10-12' }))
+    };
+    state.plan.push(day);
+    newDayIds.push(day.id);
+  });
+
+  // Wochenrhythmus befüllen
+  Object.entries(rhythm).forEach(([wd, idx]) => {
+    if (idx === 'rest') { state.weekPlan[wd] = 'rest'; }
+    else { const i = parseInt(idx); if (newDayIds[i]) state.weekPlan[wd] = newDayIds[i]; }
+  });
+
+  save(); closeSheet(); renderPlan(); renderWeekPlanner();
+  toast(`✅ ${days.length} Trainingstage + Wochenplan erstellt!`);
+  setTimeout(() => go('plan'), 400);
+}
+
+/* ═══════════════ WOCHENRHYTHMUS-SHEET ═══════════════ */
+function openRhythmSheet() {
+  _renderRhythmSheet();
+}
+
+function _renderRhythmSheet() {
+  const todayIdx = (new Date().getDay()+6)%7;
+  const WDS = ['MO','DI','MI','DO','FR','SA','SO'];
+  const WDFULL = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+
+  const quickRhythms = [
+    { label:'Mo / Mi / Fr', days:['MO','MI','FR'] },
+    { label:'Di / Do / Sa', days:['DI','DO','SA'] },
+    { label:'Mo–Fr', days:['MO','DI','MI','DO','FR'] },
+    { label:'Mo / Di / Do / Fr', days:['MO','DI','DO','FR'] },
+    { label:'Mo / Mi / Fr / Sa', days:['MO','MI','FR','SA'] },
+  ];
+
+  const dayBtns = WDS.map((wd, i) => {
+    const cur = state.weekPlan[wd];
+    const isRest = cur === 'rest';
+    const hasDay = cur && cur !== 'rest';
+    const cls = hasDay ? 'train' : isRest ? 'rest' : '';
+    return `<button class="rday ${cls} ${i===todayIdx?'today':''}" onclick="_toggleRhythmDay('${wd}')" title="${WDFULL[i]}">${wd}</button>`;
+  }).join('');
+
+  const quickBtns = quickRhythms.map(r =>
+    `<button class="fchip" onclick="_applyQuickRhythm(${JSON.stringify(r.days)})">${r.label}</button>`
+  ).join('');
+
+  // Zeige Planübersicht
+  const planRows = state.plan.map((d,i) => {
+    const assignedDays = WDS.filter(wd => state.weekPlan[wd] === d.id);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-2)">
+      <div style="flex:1;font-weight:600;font-size:13px">${d.name}</div>
+      <div style="font-size:12px;color:var(--ink-3)">${assignedDays.length ? assignedDays.join(', ') : 'nicht zugewiesen'}</div>
+    </div>`;
+  }).join('');
+
+  openSheet(`
+    <h2>Wochenrhythmus</h2>
+    <div class="sh-sub">Lege fest, an welchen Tagen trainiert und pausiert wird.</div>
+
+    <div class="plan-section">
+      <div class="plan-section-title">Schnell-Rhythmus</div>
+      <div class="filter-row">${quickBtns}</div>
+    </div>
+
+    <div class="plan-section">
+      <div class="plan-section-title">Tage manuell wählen <span style="font-weight:400;color:var(--ink-3)">(tippe zum umschalten)</span></div>
+      <div class="rhythm-row">${dayBtns}</div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--ink-3)">
+        <span>🟠 Training &nbsp;</span><span>⚫ Ruhetag &nbsp;</span><span>⬜ leer</span>
+      </div>
+    </div>
+
+    ${state.plan.length ? `<div class="plan-section">
+      <div class="plan-section-title">Plan-Übersicht</div>
+      ${planRows}
+      <div style="margin-top:12px;font-size:12px;color:var(--ink-3)">
+        Tippe im Wochenplan auf einen Tag, um ein konkretes Training zuzuweisen.
+      </div>
+    </div>` : `<div class="plan-wizard-hint">
+      💡 Noch keine Trainingstage – erstelle zuerst einen Plan oder nutze eine Vorlage.
+    </div>`}
+
+    <button class="btn-ghost" style="margin-top:4px;width:100%" onclick="closeSheet()">Schließen</button>
+  `);
+}
+
+function _toggleRhythmDay(wd) {
+  const cur = state.weekPlan[wd];
+  if (!cur) { state.weekPlan[wd] = 'rest'; }
+  else if (cur === 'rest') { delete state.weekPlan[wd]; }
+  else { state.weekPlan[wd] = 'rest'; }
+  save(); renderWeekPlanner(); _renderRhythmSheet();
+}
+
+function _applyQuickRhythm(trainDays) {
+  const WDS = ['MO','DI','MI','DO','FR','SA','SO'];
+  WDS.forEach(wd => {
+    if (trainDays.includes(wd)) {
+      // Wenn noch kein Training zugewiesen → als Training markieren (leer lassen = kein Ruhetag)
+      if (state.weekPlan[wd] === 'rest') delete state.weekPlan[wd];
+    } else {
+      state.weekPlan[wd] = 'rest';
+    }
+  });
+  save(); renderWeekPlanner(); _renderRhythmSheet();
+  toast('Rhythmus angewendet');
+}
+
+
 /* ═══════════════ WORKOUT / TRACKING ═══════════════ */
 let workoutDraft=null;
 function startWorkout(dayId){
@@ -2177,51 +2490,8 @@ function calcWarmup(){
 }
 
 /* ═══════════════ TRAININGSPLAN-VORLAGEN ═══════════════ */
-const PLAN_TEMPLATES=[
-  {name:'Push / Pull / Beine (PPL)', desc:'Klassischer 3er-Split für Mittel–Fortgeschritten.', days:[
-    {name:'Push', ex:['bankdr','schraegbank','schulterdr','seitheben','tricepush','frenchpress']},
-    {name:'Pull', ex:['klimm','rudern','latzug','facepull','bizcurl','hammer']},
-    {name:'Beine', ex:['kniebeuge','rdl','beinpresse','beincurl','wade','wadesitz']},
-  ]},
-  {name:'Oberkörper / Unterkörper', desc:'4er-Split, gut für moderate Frequenz.', days:[
-    {name:'Oberkörper A', ex:['bankdr','rudern','schulterdr','latzug','bizcurl','tricepush']},
-    {name:'Unterkörper A', ex:['kniebeuge','rdl','beinpresse','wade','crunch']},
-    {name:'Oberkörper B', ex:['schraegbank','klimm','arnold','tbar','hammer','dips']},
-    {name:'Unterkörper B', ex:['frontsquat','hipthrust','ausfall','beincurl','wadesitz']},
-  ]},
-  {name:'Ganzkörper (3×/Woche)', desc:'Ideal für Einsteiger – jede Einheit den ganzen Körper.', days:[
-    {name:'Ganzkörper A', ex:['kniebeuge','bankdr','rudern','schulterdr','crunch']},
-    {name:'Ganzkörper B', ex:['rdl','schraegbank','latzug','seitheben','plank']},
-    {name:'Ganzkörper C', ex:['beinpresse','dips','klimm','bizcurl','wade']},
-  ]},
-];
-function openImportPlans(){
-  openSheet(`
-    <h2>Trainingsplan-Vorlagen</h2>
-    <div class="sh-sub">Fertigen Plan übernehmen – wird zu deinen Trainingstagen hinzugefügt.</div>
-    ${PLAN_TEMPLATES.map((t,i)=>`
-      <div class="tmpl-card">
-        <h3>${t.name}</h3>
-        <div class="tc-desc">${t.desc}</div>
-        <div class="tc-days">${t.days.map(d=>`<span class="tc-day">${d.name}</span>`).join('')}</div>
-        <button class="btn-primary" onclick="importTemplate(${i})">Plan übernehmen</button>
-      </div>`).join('')}
-    <button class="btn-ghost" onclick="closeSheet()">Abbrechen</button>
-  `);
-}
-function importTemplate(i){
-  const t=PLAN_TEMPLATES[i];
-  t.days.forEach(d=>{
-    const day={id:'d'+Date.now()+Math.random().toString(36).slice(2,6),name:d.name,ex:[]};
-    d.ex.forEach(exId=>{
-      const ex=EXERCISES.find(e=>e.id===exId); if(!ex)return;
-      const rec=recForLevel(ex.lvl);
-      day.ex.push({id:ex.id,name:ex.name,muscle:ex.muscle,sets:parseInt(rec.sets)||3,reps:rec.reps});
-    });
-    state.plan.push(day);
-  });
-  save(); closeSheet(); toast(`„${t.name}" übernommen`); go('plan');
-}
+// openImportPlans → jetzt openTemplateWizard (neue Implementierung oben)
+function openImportPlans(){ openTemplateWizard(); }
 
 /* ── Installations-Anleitung (Homebildschirm) ── */
 function isStandalone(){
