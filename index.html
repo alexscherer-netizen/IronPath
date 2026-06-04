@@ -149,12 +149,17 @@ header{padding:calc(22px + env(safe-area-inset-top)) 16px 8px;max-width:760px;ma
 
 /* ── Dashboard ── */
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 17px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.stat .lbl{font-size:12px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.stat .val{font-family:var(--display);font-weight:800;font-size:30px;margin-top:6px;line-height:1}
-.stat .val small{font-size:14px;color:var(--ink-3);font-weight:600;margin-left:3px}
-.stat .ic{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:9px;display:grid;place-items:center}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat .lbl{font-size:11.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.stat .val{font-family:var(--display);font-weight:800;font-size:27px;margin-top:3px;line-height:1}
+.stat .val small{font-size:13px;color:var(--ink-3);font-weight:600;margin-left:3px}
+.stat .ic{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:9px;display:grid;place-items:center}
 .stat .ic svg{width:17px;height:17px}
+.reset-stats-btn{width:100%;margin-top:10px;padding:10px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:12.5px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);transition:.15s}
+.reset-stats-btn:active{transform:scale(.98)}
+.reset-stats-btn svg{width:14px;height:14px}
+.stat-info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-3);font-size:9.5px;font-weight:800;font-style:italic;font-family:var(--display);line-height:1;vertical-align:1px;margin-left:3px;transition:.15s}
+.stat-info:active{transform:scale(.85);background:var(--accent-soft);color:var(--accent-ink)}
 
 /* Wochenziel */
 .goal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
@@ -731,7 +736,7 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
     </div>
     <div class="stat">
       <div class="ic" style="background:var(--blue-soft);color:#2563eb"><i data-lucide="chart-column"></i></div>
-      <div class="lbl">Volumen</div>
+      <div class="lbl">Volumen <button class="stat-info" onclick="showVolumeInfo()" aria-label="Was bedeutet Volumen?">i</button></div>
       <div class="val" id="stVolume">0<small>kg</small></div>
     </div>
     <div class="stat">
@@ -745,6 +750,9 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
       <div class="val" id="stWeek">0</div>
     </div>
   </div>
+  <button class="reset-stats-btn" id="resetStatsBtn" onclick="resetStats()">
+    <i data-lucide="rotate-ccw"></i> Statistik zurücksetzen
+  </button>
 
   <div class="section-title">Dein Level</div>
   <div class="card level-card" id="levelCard"></div>
@@ -2354,6 +2362,43 @@ function clearStopwatches(){
 }
 
 /* ═══════════════ DASHBOARD ═══════════════ */
+function showVolumeInfo(){
+  const totalVol=state.logs.reduce((s,l)=>s+logVolume(l),0);
+  const totalSets=state.logs.reduce((s,l)=>s+l.entries.reduce((a,e)=>a+e.sets.length,0),0);
+  const hasData = totalVol>0;
+  openSheet(`
+    <h2>📊 Volumen erklärt</h2>
+    <div class="sh-sub">Das Trainingsvolumen ist die gesamte bewegte Last – ein guter Indikator für deinen Trainingsreiz.</div>
+
+    <div class="card" style="padding:15px;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px">So wird gerechnet</div>
+      <div style="font-size:13.5px;color:var(--ink-2);line-height:1.6">
+        Pro Satz: <b style="color:var(--ink)">Gewicht × Wiederholungen</b><br>
+        Alle Sätze werden zusammengezählt.
+      </div>
+    </div>
+
+    <div class="card" style="padding:15px;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Beispiel</div>
+      <div style="font-size:13.5px;color:var(--ink-2);line-height:1.7">
+        3 Sätze Bankdrücken mit 50 kg × 10 Wdh.<br>
+        = 50 × 10 × 3 = <b style="color:var(--accent-ink)">1.500 kg</b> Volumen
+      </div>
+    </div>
+
+    ${hasData?`<div class="card" style="padding:15px;margin-bottom:14px;background:var(--accent-soft);border-color:transparent">
+      <div style="font-size:12.5px;color:var(--accent-ink);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Dein aktuelles Volumen</div>
+      <div style="font-family:var(--display);font-weight:800;font-size:28px;color:var(--accent-ink);line-height:1">${fmt(totalVol)} kg</div>
+      <div style="font-size:12.5px;color:var(--ink-2);margin-top:5px">aus ${totalSets} Satz${totalSets===1?'':'en'} insgesamt</div>
+    </div>`:''}
+
+    <div style="font-size:12px;color:var(--ink-3);line-height:1.6;margin-bottom:14px">
+      💡 Mehr Volumen über die Zeit (mehr Gewicht, Wiederholungen oder Sätze) ist ein Zeichen für Fortschritt – achte aber auf saubere Technik statt nur auf die Zahl.
+    </div>
+
+    <button class="btn-primary" onclick="closeSheet()">Verstanden</button>
+  `);
+}
 function renderDash(){
   const h=new Date().getHours();
   document.getElementById('greeting').textContent = h<11?'Guten Morgen!':h<17?'Servus!':'Guten Abend!';
@@ -2365,6 +2410,7 @@ function renderDash(){
   // week count
   const wk=state.logs.filter(l=>withinDays(l.date,7)).length;
   document.getElementById('stWeek').textContent=wk;
+  const rsb=document.getElementById('resetStatsBtn'); if(rsb) rsb.style.display = state.logs.length ? 'flex' : 'none';
   document.getElementById('streakNum').textContent=calcStreak();
   document.getElementById('dashSub').textContent = state.logs.length? `${state.logs.length} Workouts absolviert – weiter so!` : 'Bereit für dein erstes Training?';
 
@@ -3355,6 +3401,16 @@ function importData(ev){
   };
   r.readAsText(file);
   ev.target.value='';
+}
+function resetStats(){
+  if(!state.logs.length){ toast('Keine Statistik vorhanden'); return; }
+  confirmAction('Statistik zurücksetzen?','Alle geloggten Trainings (Workouts, Volumen, Sätze) werden gelöscht. Deine Pläne, Ziele und Maße bleiben erhalten.',()=>{
+    state.logs=[];
+    state.weekGoalCelebrated='';
+    (state.goals||[]).forEach(g=>g.done=false);
+    save(); toast('Statistik zurückgesetzt');
+    renderDash(); renderProgress(); renderHeatmap(); renderMore();
+  },'Ja, zurücksetzen');
 }
 function resetAll(){
   confirmAction('Alle Daten löschen?','Pläne, Trainings, Ernährung und Maße werden unwiderruflich gelöscht.',()=>{
