@@ -8,6 +8,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="IronPath">
+<script>
+  /* Theme so früh wie möglich setzen (verhindert Flackern) */
+  try{
+    var _saved=JSON.parse(localStorage.getItem('ironpath_v1')||'{}');
+    if(_saved&&_saved.theme==='dark'){
+      document.documentElement.setAttribute('data-theme','dark');
+      var _m=document.querySelector('meta[name="theme-color"]');
+      if(_m)_m.setAttribute('content','#0d0f13');
+    }
+  }catch(e){}
+</script>
 <meta name="description" content="IronPath – dein Bodybuilding-Coach: Übungen, Pläne, Tracking, Fortschritt.">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%2313151a'/%3E%3Cg transform='translate(38,38)' stroke='%23ff5a1f' stroke-width='9' stroke-linecap='round' fill='none'%3E%3Cpath d='M22 22L82 82M8 32l-5 5a7 7 0 000 10l5 5m72-20l5 5a7 7 0 010 10l-5 5M28 8l5-5a7 7 0 0110 0l5 5m32 64l5 5a7 7 0 0010 0l5-5'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -67,6 +78,21 @@ html[data-theme="dark"] .bm-tab.active{background:var(--accent);color:#fff}
 html[data-theme="dark"] .badge.earned{background:linear-gradient(135deg,#1f1813,#241a13);border-color:#5a3520}
 html[data-theme="dark"] .bodymap{background:radial-gradient(120% 120% at 50% 0%,#1b1f26,#14171d)}
 html[data-theme="dark"] .heatmap-legend .hl-item i{border-color:rgba(255,255,255,.12)}
+/* Untere Navigationsleiste im Dark Mode */
+html[data-theme="dark"] nav.tabbar{background:rgba(20,23,28,.88);border-top-color:var(--line)}
+/* Kleine helle Akzentflächen anpassen */
+html[data-theme="dark"] .theme-switch::after{background:#e8eaef}
+html[data-theme="dark"] .day-preview .dp-edit{background:var(--surface-2)}
+html[data-theme="dark"] .tmpl-card .tc-day{background:var(--surface-2)}
+html[data-theme="dark"] .kcal-input:focus,
+html[data-theme="dark"] .pr-input:focus,
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus,
+html[data-theme="dark"] .field textarea:focus,
+html[data-theme="dark"] .set-row input,
+html[data-theme="dark"] .add-set,
+html[data-theme="dark"] .stopwatch,
+html[data-theme="dark"] .rest-chip{background:var(--surface-2);color:var(--ink)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}
 body{
@@ -91,7 +117,7 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .app{max-width:760px;margin:0 auto;padding:0 16px}
 
 /* ── Header ── */
-header{padding:22px 16px 8px;max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+header{padding:calc(22px + env(safe-area-inset-top)) 16px 8px;max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:11px}
 .logo{
   width:42px;height:42px;border-radius:13px;
