@@ -21,9 +21,10 @@
 </script>
 <meta name="description" content="IronPath – dein Bodybuilding-Coach: Übungen, Pläne, Tracking, Fortschritt.">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%2313151a'/%3E%3Cg transform='translate(38,38)' stroke='%23ff5a1f' stroke-width='9' stroke-linecap='round' fill='none'%3E%3Cpath d='M22 22L82 82M8 32l-5 5a7 7 0 000 10l5 5m72-20l5 5a7 7 0 010 10l-5 5M28 8l5-5a7 7 0 0110 0l5 5m32 64l5 5a7 7 0 0010 0l5-5'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- Optionaler Schrift-Feinschliff. Die App läuft komplett ohne: fällt das
+     Netz aus, greift der Systemschrift-Stack aus --display / --body. -->
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
   --bg:#f4f5f7;
@@ -45,8 +46,11 @@
   --radius-sm:12px;
   --shadow:0 1px 2px rgba(19,21,26,.04),0 8px 24px rgba(19,21,26,.06);
   --shadow-lg:0 12px 40px rgba(19,21,26,.12);
-  --display:'Bricolage Grotesque',sans-serif;
-  --body:'Outfit',sans-serif;
+  /* Systemschriften – kein Netz nötig, laden sofort, sehen auf iOS/Android
+     wie die native App-Schrift aus. Falls die Google-Fonts doch geladen
+     werden können, werden sie automatisch bevorzugt. */
+  --display:'Bricolage Grotesque','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --body:'Outfit','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
 }
 /* ── Dark Mode ── */
 html[data-theme="dark"]{
@@ -353,9 +357,11 @@ html[data-theme="dark"] .level-emblem{background:linear-gradient(135deg,#262b34,
 .plan-card .ph{padding:15px 16px;display:flex;align-items:center;gap:12px}
 .plan-day-badge{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ff8a4c);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;flex-shrink:0;text-align:center;line-height:1}
 .plan-day-badge small{font-size:9px;display:block;opacity:.85;font-weight:600}
-.plan-card .ph .pinfo{flex:1;min-width:0}
-.plan-card .ph .pinfo h3{font-size:16px}
+.plan-card .ph .pinfo{flex:1;min-width:0;text-align:left;padding:2px 0;border-radius:9px;transition:.15s}
+.plan-card .ph .pinfo h3{font-size:16px;display:flex;align-items:center;gap:6px}
+.plan-card .ph .pinfo h3 .pen{width:14px;height:14px;color:var(--ink-3);flex-shrink:0;opacity:.75}
 .plan-card .ph .pinfo .pc{font-size:12.5px;color:var(--ink-3)}
+.plan-card .ph .pinfo:active{background:var(--surface-2)}
 .icon-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line-2)}
 .icon-btn svg{width:16px;height:16px}
 .icon-btn:active{transform:scale(.92)}
@@ -639,14 +645,28 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
 .btn-primary{width:100%;background:var(--accent);color:#fff;font-weight:700;padding:14px;border-radius:13px;font-size:15px;transition:.15s;box-shadow:0 6px 16px rgba(255,90,31,.3)}
 .btn-primary:active{transform:scale(.98)}
 .btn-ghost{width:100%;color:var(--ink-2);font-weight:600;padding:12px;font-size:14px;margin-top:6px}
-/* Aktionsleiste bleibt beim Scrollen / offener Tastatur immer erreichbar */
-.sheet-actions{
-  position:sticky;bottom:0;z-index:6;
-  margin:14px -20px 0;padding:12px 20px calc(10px + env(safe-area-inset-bottom));
-  background:var(--surface);
-  box-shadow:0 -10px 18px -12px rgba(0,0,0,.35);
+/* Kopfzeile im Sheet: Titel links, Abschluss-Aktion rechts – bleibt beim
+   Scrollen oben stehen, statt unten einen Dauer-Button einzublenden. */
+.sheet-head{
+  position:sticky;top:0;z-index:6;
+  display:flex;align-items:center;gap:10px;
+  margin:-8px -20px 14px;padding:10px 16px 10px 20px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  box-shadow:0 10px 14px -14px rgba(0,0,0,.4);
 }
-.sheet-actions .btn-primary{padding:16px}
+.sheet-head .sh-title{
+  flex:1;min-width:0;font-family:var(--display);font-weight:800;font-size:18px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sheet-head .sh-cancel{
+  color:var(--ink-3);font-weight:600;font-size:14px;padding:8px 2px;flex-shrink:0;
+}
+.sheet-head .sh-done{
+  background:var(--accent);color:#fff;font-weight:700;font-size:14px;
+  padding:9px 18px;border-radius:11px;flex-shrink:0;transition:.15s;
+}
+.sheet-head .sh-done:active{transform:scale(.96)}
+.sheet-head .sh-done[disabled]{background:var(--line);color:var(--ink-3);box-shadow:none}
 
 /* picker grid for ex selection in tracking */
 .pick-ex{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:9px;transition:.15s;cursor:pointer}
@@ -1573,7 +1593,10 @@ function renderPlan(){
     return `<div class="plan-card" id="plancard-${d.id}">
       <div class="ph">
         <div class="plan-day-badge"><small>TAG</small>${i+1}</div>
-        <div class="pinfo"><h3>${d.name}</h3><div class="pc">${d.ex.length} Übungen${d.ex.length?' · '+totalSets(d)+' Sätze':''}</div></div>
+        <button type="button" class="pinfo" onclick="renameDaySheet('${d.id}')" title="Umbenennen">
+          <h3>${d.name}<svg class="pen" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.1 2.1 0 10-3-3L5 17v3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></h3>
+          <div class="pc">${d.ex.length} Übung${d.ex.length===1?'':'en'}${d.ex.length?' · '+totalSets(d)+' Sätze':''}</div>
+        </button>
         <button class="icon-btn" onclick="startWorkout('${d.id}')" title="Training starten" style="background:var(--accent);color:#fff;border:none">
           <svg viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>
         </button>
@@ -1653,6 +1676,7 @@ function openDayAssign(wd){
         Übung hinzufügen
       </button>
       ${curDay.ex.length?`<button class="btn-primary" style="margin-top:10px" onclick="startWorkout('${curDay.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;margin-right:6px"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>Training starten</button>`:''}
+      <button class="btn-ghost" onclick="renameDaySheet('${curDay.id}')">Training umbenennen</button>
       <button class="btn-ghost" onclick="assignDay('${wd}','rest')">Stattdessen Ruhetag</button>
       <button class="btn-ghost" onclick="removeWeekDay('${wd}','${curDay.id}')">Training für diesen Tag löschen</button>
       <button class="btn-ghost" onclick="closeSheet()">Schließen</button>
@@ -1897,6 +1921,45 @@ function openDaySheet(prefillEx){
   `);
   setTimeout(()=>document.getElementById('dayName')?.focus(),300);
 }
+/* ── Trainingstag umbenennen ── */
+function renameDaySheet(dayId){
+  const d=state.plan.find(x=>x.id===dayId);
+  if(!d){toast('Training nicht gefunden');return;}
+  openSheet(`
+    <h2>Umbenennen</h2>
+    <div class="sh-sub">Wie soll dieser Trainingstag heißen?</div>
+    <div class="field">
+      <label>Name</label>
+      <input id="renameDayName" maxlength="40" autocomplete="off" value="${escAttr(d.name)}"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();applyRenameDay('${dayId}');}">
+    </div>
+    <div class="field">
+      <label>Schnellauswahl</label>
+      <div class="filter-row" style="padding-bottom:2px">
+        ${['Push','Pull','Beine','Oberkörper','Ganzkörper','Arme','Geräte'].map(n=>`<button type="button" class="fchip" onclick="document.getElementById('renameDayName').value='${n}'">${n}</button>`).join('')}
+      </div>
+    </div>
+    <button type="button" class="btn-primary" onclick="applyRenameDay('${dayId}')">Speichern</button>
+    <button type="button" class="btn-ghost" onclick="closeSheet()">Abbrechen</button>
+  `);
+  setTimeout(()=>{const i=document.getElementById('renameDayName');if(i){i.focus();i.select();}},300);
+}
+function applyRenameDay(dayId){
+  const d=state.plan.find(x=>x.id===dayId); if(!d)return;
+  const inp=document.getElementById('renameDayName');
+  const name=((inp&&inp.value)||'').trim();
+  if(!name){toast('Bitte Namen eingeben');return;}
+  if(name===d.name){closeSheet();return;}
+  d.name=name;
+  save(); closeSheet();
+  renderPlan(); renderWeekPlanner(); renderDash();
+  toast('Umbenannt in „'+name+'"');
+}
+/* Anführungszeichen etc. für value="…" entschärfen */
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function createDay(prefillEx){
   const name=(document.getElementById('dayName').value||'').trim();
   if(!name){toast('Bitte Namen eingeben');return;}
@@ -2200,6 +2263,16 @@ function _applyQuickRhythm(trainDays) {
 /* ═══════════════ WORKOUT / TRACKING ═══════════════ */
 let workoutDraft=null;
 
+/* Kopfzeile eines Trainings-Sheets: Abbrechen · Titel · Fertig.
+   Ersetzt die frühere Dauer-Leiste am unteren Bildschirmrand. */
+function sheetHead(title, canSave){
+  return `<div class="sheet-head">
+    <button type="button" class="sh-cancel" onclick="closeSheet()">Abbrechen</button>
+    <span class="sh-title">${title}</span>
+    <button type="button" class="sh-done" id="btnSaveWorkout" onclick="saveWorkout()" ${canSave?'':'disabled'}>Speichern</button>
+  </div>`;
+}
+
 /* ── Quick-Log: freies Training ohne Plan ── */
 function openQuickLog(){
   workoutDraft={dayName:'Freies Training', entries:[], quick:true};
@@ -2215,7 +2288,7 @@ function renderQuickLogSheet(){
   clearStopwatches();
   const hasEx=workoutDraft.entries.length>0;
   openSheet(`
-    <h2>Quick-Log</h2>
+    ${sheetHead('Quick-Log', hasEx)}
     <div class="sh-sub">Übungen frei hinzufügen und Sätze loggen – ganz ohne Plan.</div>
     <div class="ql-add-select">
       <select id="qlExPicker" class="ex-picker" style="margin-bottom:0">${_quickExOptions()}</select>
@@ -2239,10 +2312,6 @@ function renderQuickLogSheet(){
         </div>
       </div>`;}).join('')}</div>
     ${hasEx?'':'<div class="empty-next" style="margin-top:4px">Noch keine Übung gewählt.<br>Wähle oben eine Übung und tippe „+ Übung".</div>'}
-    <div class="sheet-actions">
-      <button type="button" class="btn-primary" onclick="saveWorkout()" ${hasEx?'':'style="opacity:.5;pointer-events:none"'}>Training speichern</button>
-      <button type="button" class="btn-ghost" onclick="closeSheet()">Abbrechen</button>
-    </div>
   `);
 }
 function quickAddEx(){
@@ -2278,7 +2347,7 @@ function lastSetsFor(exId){
 function renderWorkoutSheet(){
   clearStopwatches();
   openSheet(`
-    <h2>${workoutDraft.dayName}</h2>
+    ${sheetHead(workoutDraft.dayName, true)}
     <div class="sh-sub">Gewicht (kg) & Wdh. pro Satz. Stoppuhr misst die Übungsdauer, der Pause-Button startet den Countdown.</div>
     <div id="wkBody">${workoutDraft.entries.map((en,ei)=>{
       const rest=restForLevel((allExercises().find(e=>e.id===en.exId)||{}).lvl);
@@ -2301,10 +2370,6 @@ function renderWorkoutSheet(){
           ${[60,90,120].map(t=>`<button class="rest-chip ${t===rest?'suggested':''}" onclick="startRest(${t})">${fmtClock(t)}</button>`).join('')}
         </div>
       </div>`;}).join('')}</div>
-    <div class="sheet-actions">
-      <button type="button" class="btn-primary" onclick="saveWorkout()">Training speichern</button>
-      <button type="button" class="btn-ghost" onclick="closeSheet()">Abbrechen</button>
-    </div>
   `);
 }
 function setRow(ei,si,s){
@@ -2391,50 +2456,62 @@ function beep(times=1){
 }
 
 // --- Pausen-Countdown ---
-let restInt=null, restLeft=0, restTotal=0;
+/* Der Countdown rechnet aus einem festen Ziel-Zeitpunkt (Date.now()), nicht
+   aus gezählten Intervall-Ticks. Sonst würde die Pause stehenbleiben, sobald
+   das Handy sperrt oder die App im Hintergrund ist – der Browser drosselt
+   setInterval dann auf bis zu einen Tick pro Minute. */
+let restInt=null, restLeft=0, restTotal=0, restEnd=0, _restWarned=false;
 const REST_CIRC=2*Math.PI*108;
 function startRest(seconds){
   restStop(true);
-  restTotal=seconds; restLeft=seconds;
+  restTotal=seconds;
+  restEnd=Date.now()+seconds*1000;
+  _restWarned=false;
   document.getElementById('restRing').style.strokeDasharray=REST_CIRC;
   document.getElementById('restOverlay').classList.add('open');
+  restTick();
+  restInt=setInterval(restTick,250);
+}
+function restTick(){
+  restLeft=Math.max(0, Math.ceil((restEnd-Date.now())/1000));
   updateRestUI();
-  restInt=setInterval(()=>{
-    restLeft--;
-    if(restLeft<=0){ updateRestUI(); beep(3); restStop(); return; }
-    updateRestUI();
-    if(restLeft===3){ beep(1); }
-  },1000);
+  if(restLeft<=3 && restLeft>0 && !_restWarned){ _restWarned=true; beep(1); }
+  if(restLeft<=0){ beep(3); restStop(); }
 }
 function updateRestUI(){
   document.getElementById('restTime').textContent=fmtClock(Math.max(0,restLeft));
   const frac=restTotal? restLeft/restTotal : 0;
   document.getElementById('restRing').style.strokeDashoffset=REST_CIRC*(1-frac);
 }
-function restAdd(s){ restLeft+=s; restTotal+=s; updateRestUI(); }
+function restAdd(s){ restEnd+=s*1000; restTotal+=s; if(s>0)_restWarned=false; restTick(); }
 function restStop(silent){
   if(restInt){clearInterval(restInt);restInt=null;}
   if(!silent) document.getElementById('restOverlay').classList.remove('open');
 }
 
 // --- Stoppuhr (Übungsdauer) pro Übung im Workout-Sheet ---
-let stopwatches={}; // ei -> {sec, int, running}
+/* Auch die Stoppuhr misst echte Zeit: sie merkt sich den Startzeitpunkt und
+   die bereits gelaufene Zeit, statt pro Intervall-Tick hochzuzählen. */
+let stopwatches={}; // ei -> {acc, startedAt, int, running}
+function swSec(sw){ return Math.floor((sw.acc + (sw.running ? Date.now()-sw.startedAt : 0))/1000); }
 function swToggle(ei){
-  const sw=stopwatches[ei]||(stopwatches[ei]={sec:0,int:null,running:false});
+  const sw=stopwatches[ei]||(stopwatches[ei]={acc:0,startedAt:0,int:null,running:false});
   if(sw.running){
+    sw.acc+=Date.now()-sw.startedAt;
     clearInterval(sw.int); sw.int=null; sw.running=false;
   }else{
-    sw.running=true;
-    sw.int=setInterval(()=>{ sw.sec++; swRender(ei); },1000);
+    sw.running=true; sw.startedAt=Date.now();
+    sw.int=setInterval(()=>swRender(ei),250);
   }
   swRender(ei);
 }
 function swReset(ei){
   const sw=stopwatches[ei]; if(!sw)return;
-  clearInterval(sw.int); sw.int=null; sw.running=false; sw.sec=0; swRender(ei);
+  clearInterval(sw.int); sw.int=null; sw.running=false; sw.acc=0; sw.startedAt=0; swRender(ei);
 }
 function swRender(ei){
   const sw=stopwatches[ei]; if(!sw)return;
+  sw.sec=swSec(sw);
   const t=document.getElementById('sw-time-'+ei);
   const b=document.getElementById('sw-btn-'+ei);
   if(t){ t.textContent=fmtClock(sw.sec); t.classList.toggle('run',sw.running); }
@@ -2447,6 +2524,14 @@ function clearStopwatches(){
   for(const k in stopwatches){ if(stopwatches[k].int)clearInterval(stopwatches[k].int); }
   stopwatches={};
 }
+/* Kommt die App aus dem Hintergrund zurück (Display war aus, App gewechselt),
+   sofort auf die echte Uhrzeit nachziehen statt auf den nächsten Tick warten. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible') return;
+  if(restInt) restTick();
+  for(const k in stopwatches) swRender(k);
+});
+window.addEventListener('focus',()=>{ if(restInt) restTick(); });
 
 /* ═══════════════ DASHBOARD ═══════════════ */
 function showVolumeInfo(){
@@ -3513,17 +3598,60 @@ renderMuscleList();renderLvlFilters();renderExercises();renderHeatmap();renderDa
 setNavIcons("dash");setSectionIcons();
 maybeShowInstallHint();
 </script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script>
+/* ═══════════════ ICONS (inline, ohne CDN) ═══════════════
+   Ersetzt die frühere Abhängigkeit von unpkg.com/lucide.
+   Die App braucht damit für die Darstellung kein Netz mehr. */
+const ICON_PATHS = {
+  'dumbbell':'<path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/>',
+  'flame':'<path d="M12 22a6 6 0 0 0 6-6c0-4.5-3-5.5-3-9.5 0 0-2.6 1.6-2.6 4.2 0-1.6-1.6-2.7-1.6-2.7S6 11 6 16a6 6 0 0 0 6 6z"/>',
+  'house':'<path d="M3 10.4 12 3l9 7.4V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9.5 21v-6h5v6"/>',
+  'calendar-days':'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+  'chart-column':'<path d="M4 21h17M7 21V12M12.5 21V6M18 21v-6"/>',
+  'check-check':'<path d="M2 12.5 6 16.5 13.5 9"/><path d="M11.5 16.5 13.5 18.5 22 9.5"/>',
+  'circle-dot':'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>',
+  'clipboard-list':'<rect x="9" y="3" width="6" height="3.5" rx="1"/><path d="M9 4.5H6.8A1.8 1.8 0 0 0 5 6.3v13.9A1.8 1.8 0 0 0 6.8 22h10.4a1.8 1.8 0 0 0 1.8-1.8V6.3a1.8 1.8 0 0 0-1.8-1.8H15"/><path d="M9 12h6M9 16.5h6"/>',
+  'download':'<path d="M12 3v12M7.5 11 12 15.5 16.5 11M5 21h14"/>',
+  'upload':'<path d="M12 20.5V8.5M7.5 13 12 8.5 16.5 13M5 3.5h14"/>',
+  'mail':'<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M3 7.5 12 13.5 21 7.5"/>',
+  'trash-2':'<path d="M4 7h16M9.5 7V4.6a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7"/><path d="M6.5 7 7.4 20a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.5 7"/><path d="M10.5 11v6M13.5 11v6"/>',
+  'rotate-ccw':'<path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 3v4.5h4.5"/>',
+  'smartphone':'<rect x="6" y="2" width="12" height="20" rx="2.2"/><path d="M10.5 18.5h3"/>',
+  'bug':'<path d="M8.5 6.5a3.5 3.5 0 0 1 7 0"/><path d="M6 10h12v4.5a6 6 0 0 1-12 0z"/><path d="M3 10.5h3M18 10.5h3M3 17h3M18 17h3M6.5 6.5 4.5 4.5M17.5 6.5l2-2"/>',
+  'arrow-up':'<path d="M12 19.5V5M5.5 11.5 12 5l6.5 6.5"/>',
+  'arrow-down':'<path d="M12 4.5V19M5.5 12.5 12 19l6.5-6.5"/>',
+  'arrow-down-to-line':'<path d="M12 3v11.5M7.5 10.5 12 15l4.5-4.5M5 20h14"/>',
+  'move-up':'<path d="M8 8.5 12 4.5l4 4M12 4.5V20"/>',
+  'move-down':'<path d="M8 15.5 12 19.5l4-4M12 19.5V4"/>',
+  'move-horizontal':'<path d="M6.5 8 3 12l3.5 4M17.5 8 21 12l-3.5 4M3.5 12h17"/>',
+  'chevrons-down':'<path d="M7 6.5 12 11.5 17 6.5"/><path d="M7 13 12 18 17 13"/>',
+  'minus':'<path d="M5 12h14"/>',
+  'rows-2':'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 12h18"/>',
+  'footprints':'<path d="M5.5 16.5c0-2.3-1.3-3.2-1.3-5.4a2.6 2.6 0 0 1 5.2 0c0 2.2-1.3 3.1-1.3 5.4z"/><path d="M5.6 16.5h2.5v2a1.25 1.25 0 0 1-2.5 0z"/><path d="M15.6 12c0-2.3-1.3-3.2-1.3-5.4a2.6 2.6 0 0 1 5.2 0c0 2.2-1.3 3.1-1.3 5.4z"/><path d="M15.7 12h2.5v2a1.25 1.25 0 0 1-2.5 0z"/>',
+  'hammer':'<path d="M14.5 11.5 6.6 19.4a2 2 0 0 1-2.8-2.8l7.9-7.9"/><path d="m9.5 7.5 3-3 2 2 3.5-1.5 3 3L19.5 11l2 2-3 3-3-3z"/>'
+};
+const ICON_FALLBACK = '<circle cx="12" cy="12" r="8.5"/>';
+function iconSVG(name, cls, style){
+  const d = ICON_PATHS[name] || ICON_FALLBACK;
+  return '<svg class="ico'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+       + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'
+       + (style?' style="'+style+'"':'') + '>' + d + '</svg>';
+}
+/* Kompatibel zur bisherigen lucide-API: ersetzt <i data-lucide="…"> durch das SVG. */
+window.lucide = {
+  createIcons(){
+    document.querySelectorAll('i[data-lucide]').forEach(el=>{
+      const wrap=document.createElement('span');
+      wrap.innerHTML=iconSVG(el.getAttribute('data-lucide'), el.className, el.getAttribute('style')||'');
+      el.replaceWith(wrap.firstChild);
+    });
+  }
+};
+</script>
 <script>
 /* Lucide-Icons rendern + nach jedem dynamischen Update neu zeichnen.
    Wir wrappen die Render-Funktionen, damit Icons immer aktuell sind. */
 function drawIcons(){ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons(); }
-/* Fallback: lädt das CDN nicht (offline), markiere unaufgelöste Icons dezent */
-window.addEventListener('load',()=>{ setTimeout(()=>{
-  if(!(window.lucide&&window.lucide.createIcons)){
-    document.querySelectorAll('[data-lucide]').forEach(el=>{el.style.opacity='.35';});
-  }
-},1200);});
 ['renderExercises','renderMuscleList','renderPlan','renderProgress','renderDash','renderLogs','renderMore','renderPRs','openSheet','renderWorkoutSheet','openDaySheet','quickAddToPlan','openPlateCalc','openWarmupCalc','openImportPlans','renderGoals','renderLevel','openGoalSheet','openQuickLog','renderQuickLogSheet'].forEach(fn=>{
   const orig=window[fn];
   if(typeof orig==='function'){
@@ -3554,34 +3682,13 @@ setTimeout(drawIcons,300);
     document.head.appendChild(link);
   }catch(e){}
 
-  // Service Worker: cached die aktuelle Seite für Offline-Nutzung
-  if('serviceWorker' in navigator){
-    const swCode=`
-      const CACHE='ironpath-v1';
-      const URL_SELF=self.registration.scope;
-      self.addEventListener('install',e=>{self.skipWaiting();});
-      self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});
-      self.addEventListener('fetch',e=>{
-        const req=e.request;
-        if(req.method!=='GET'){return;}
-        e.respondWith(
-          caches.open(CACHE).then(cache=>
-            cache.match(req).then(cached=>{
-              const net=fetch(req).then(resp=>{
-                if(resp && resp.status===200 && (req.url.startsWith('http'))){ try{cache.put(req,resp.clone());}catch(_){}}
-                return resp;
-              }).catch(()=>cached);
-              return cached||net;
-            })
-          )
-        );
-      });`;
-    try{
-      const swBlob=new Blob([swCode],{type:'text/javascript'});
-      const swUrl=URL.createObjectURL(swBlob);
-      navigator.serviceWorker.register(swUrl).catch(()=>{});
-    }catch(e){}
-  }
+  /* Kein Service Worker: Ein Browser akzeptiert als SW-Skript nur eine
+     gleichnamige http(s)-Datei – eine blob:-URL wird abgelehnt. In einer
+     einzelnen HTML-Datei gibt es diese zweite Datei nicht. Der frühere
+     Versuch hier ist nie durchgelaufen und hat den Fehler nur verschluckt.
+     Offline funktioniert die App stattdessen dadurch, dass sie überhaupt
+     nichts mehr aus dem Netz braucht: Icons, Bilder und Schriften stecken
+     alle in dieser Datei. */
 })();
 </script>
 </body>
