@@ -305,6 +305,21 @@ html[data-theme="dark"] .level-emblem{background:linear-gradient(135deg,#262b34,
 .heatmap-legend .hl-item{display:flex;align-items:center;gap:5px}
 .heatmap-legend .hl-item i{width:13px;height:13px;border-radius:4px;display:inline-block;border:1px solid rgba(0,0,0,.06)}
 .muscle-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+/* Ab 700px passen die Muskelgruppen links und rechts neben die Körpergrafik –
+   sie füllen genau die Fläche, die sonst leer neben der Figur steht.
+   display:contents löst das Grid der Liste auf, die Karten werden dadurch
+   direkt zu Zellen des äußeren Rasters und lassen sich frei platzieren. */
+@media (min-width:700px){
+  .bodymap-layout{display:grid;grid-template-columns:1fr minmax(210px,262px) 1fr;column-gap:16px;align-items:start}
+  /* span statt 1/-1: ohne grid-template-rows gibt es keine explizite
+     letzte Zeilenlinie, -1 fiele auf Zeile 1 zusammen und die Karten
+     rutschten unter die Grafik statt daneben. */
+  .bodymap-main{grid-column:2;grid-row:1/span 50}
+  .bodymap-layout .muscle-list{display:contents}
+  .bodymap-layout .muscle-chip{grid-column:var(--col,1);grid-row:var(--row,auto);margin-bottom:10px}
+  /* Legende steht in der schmalen Mittelspalte – zentriert bricht sie sauber um */
+  .bodymap-main .heatmap-legend{justify-content:center;gap:10px}
+}
 .muscle-chip{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;box-shadow:var(--shadow);text-align:left;transition:.18s;display:flex;align-items:center;gap:11px}
 .muscle-chip:active{transform:scale(.97)}
 .muscle-chip.sel{border-color:var(--accent);background:var(--accent-soft)}
@@ -850,6 +865,8 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
     <button class="bm-tab active" data-view="front" onclick="setBodyView('front')">Vorderseite</button>
     <button class="bm-tab" data-view="back" onclick="setBodyView('back')">Rückseite</button>
   </div>
+  <div class="bodymap-layout">
+  <div class="bodymap-main">
   <div class="bodymap">
     <!-- ░░░ FRONT ░░░ -->
     <div class="bodyview front" id="bodyFront">
@@ -898,8 +915,11 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
     <span class="hl-item"><i style="background:#dc2626;border-color:#b91c1c"></i>viel</span>
     <span class="hl-item"><i style="background:#06b6d4;border-color:#0891b2"></i>ausgewählt</span>
   </div>
+  </div>
 
   <div class="muscle-list" id="muscleList"></div>
+  </div>
+
 
   <div class="section-title">Übungs-Bibliothek</div>
   <div class="searchbar">
@@ -1460,11 +1480,18 @@ function runConfirm(){
 let selMuscle = null;
 function renderMuscleList(){
   const el=document.getElementById('muscleList');
-  el.innerHTML=Object.entries(MUSCLES).map(([k,m])=>`
-    <button class="muscle-chip ${selMuscle===k?'sel':''}" data-m="${k}" onclick="selectMuscle('${k}')">
+  const list=Object.entries(MUSCLES);
+  el.innerHTML=list.map(([k,m],i)=>{
+    // --col/--row greifen nur im Breitbild-Layout (siehe @media 700px),
+    // auf dem Handy bleibt die normale zweispaltige Liste unberührt.
+    // Gerade Indizes links, ungerade rechts – dieselbe Aufteilung wie in
+    // der Handy-Liste, damit eine Muskelgruppe immer in derselben Spalte steht.
+    const col=i%2===0?1:3, row=Math.floor(i/2)+1;
+    return `
+    <button class="muscle-chip ${selMuscle===k?'sel':''}" data-m="${k}" onclick="selectMuscle('${k}')" style="--col:${col};--row:${row}">
       <span class="dot" style="background:${m.color}"></span>
       <span><span class="mname">${m.name}</span><br><span class="mex">${m.ex}</span></span>
-    </button>`).join('');
+    </button>`;}).join('');
 }
 function selectMuscle(k){
   selMuscle = selMuscle===k ? null : k;
