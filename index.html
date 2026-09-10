@@ -270,6 +270,11 @@ html[data-theme="dark"] .level-emblem{background:linear-gradient(135deg,#262b34,
 .next-workout{margin-top:14px;padding:18px;background:linear-gradient(135deg,#13151a,#272a33);border-radius:var(--radius);color:#fff;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
 .next-workout::after{content:"";position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(255,90,31,.4),transparent 70%)}
 .next-workout .tag{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#ff8a5c;font-weight:700}
+.next-workout .nw-head{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.next-workout .nw-head .tag{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:.02em;font-size:11.5px}
+.next-workout .nw-switch{margin:0;padding:6px 12px;font-size:12px;font-weight:700;border-radius:9px;
+  background:rgba(255,255,255,.13);color:#fff;flex-shrink:0}
+.next-workout .nw-switch:active{transform:scale(.94)}
 .next-workout h3{font-size:22px;margin:6px 0 4px;color:#fff}
 .next-workout .meta{font-size:13px;color:#aab0bd;position:relative;z-index:1}
 .next-workout button{margin-top:14px;background:var(--accent);color:#fff;font-weight:700;padding:11px 20px;border-radius:11px;font-size:14px;position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;transition:transform .15s}
@@ -700,7 +705,27 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
 .set-logger{border:1.5px solid var(--line);border-radius:14px;padding:13px;margin-bottom:11px;background:var(--surface-2)}
 .set-logger .sl-name{font-weight:700;font-size:14px;margin-bottom:9px;display:flex;align-items:center;gap:8px}
 .set-logger .sl-name .dot{width:9px;height:9px;border-radius:50%}
-.set-row{display:grid;grid-template-columns:24px 1fr 1fr 30px;gap:8px;align-items:center;margin-bottom:7px}
+.set-row{display:grid;grid-template-columns:24px 1fr 1fr 30px;gap:8px;align-items:center}
+/* Satz-Block: Eingabe oben, Vorwert + Vergleich blass darunter */
+.set-block{margin-bottom:8px;padding:4px 5px 3px;border-radius:11px;border:1.5px solid transparent;transition:background .2s,border-color .2s}
+.set-last{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;line-height:1.35;
+  color:var(--ink-3);padding:3px 36px 0 33px;min-height:15px}
+.set-last .sl-prev b{color:var(--ink-2);font-weight:700}
+.set-last .sl-none{opacity:.75;font-style:italic}
+.set-last .sd-delta{font-weight:800;white-space:nowrap;letter-spacing:.01em}
+/* mehr Gewicht als beim letzten Mal */
+.set-block.up{background:rgba(16,185,129,.11);border-color:rgba(16,185,129,.42)}
+.set-block.up .sd-delta{color:#047857}
+.set-block.up .set-row input[data-k="w"]{border-color:#10b981}
+/* weniger Gewicht */
+.set-block.down{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.40)}
+.set-block.down .sd-delta{color:#b91c1c}
+.set-block.down .set-row input[data-k="w"]{border-color:#ef4444}
+/* gleiches Gewicht */
+.set-block.same{background:var(--surface-2);border-color:var(--line)}
+.set-block.same .sd-delta{color:var(--ink-3)}
+html[data-theme="dark"] .set-block.up .sd-delta{color:#34d399}
+html[data-theme="dark"] .set-block.down .sd-delta{color:#f87171}
 .set-row .sn{font-weight:700;color:var(--ink-3);font-size:13px;text-align:center}
 .set-row input{padding:9px;border:1.5px solid var(--line);border-radius:9px;text-align:center;background:#fff;outline:none;min-width:0;width:100%}
 .set-row>*{min-width:0}
@@ -813,6 +838,8 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
     <i data-lucide="rotate-ccw"></i> Statistik zurücksetzen
   </button>
 
+  <div class="section-title">Heute</div>
+  <div id="nextWorkoutBox"></div>
   <div class="section-title">Dein Level</div>
   <div class="card level-card" id="levelCard"></div>
 
@@ -839,9 +866,6 @@ a.set-row-btn{text-decoration:none;color:var(--ink)}
 
   <div class="section-title">💡 Coach-Tipps</div>
   <div id="coachTips"></div>
-
-  <div class="section-title">Nächstes Training</div>
-  <div id="nextWorkoutBox"></div>
 
   <div class="section-title">🏅 Erfolge</div>
   <div class="badge-grid" id="badgeGrid"></div>
@@ -1359,6 +1383,7 @@ let state = {
   goals: [],      // [{id, exId, exName, type:'weight'|'reps'|'e1rm', target, deadline, createdW, done}]
   theme: 'light', // 'light' | 'dark'
   weekGoalCelebrated: '', // ISO-Wochenkey, für den der Wochenziel-Toast schon kam
+  todayPick: null,   // {date, dayId|'rest'} – spontane Planwahl nur für heute
 };
 const KEY = 'ironpath_v1';
 function todayStr(){ return new Date().toDateString(); }
@@ -1367,6 +1392,7 @@ function load(){
     if(d){state.plan=d.plan||[];state.logs=d.logs||[];
       if(d.nutri)state.nutri={...state.nutri,...d.nutri};
       if(d.measures)state.measures=d.measures;
+      if(d.todayPick)state.todayPick=d.todayPick;
       if(typeof d.weekGoal==='number')state.weekGoal=d.weekGoal;
       if(d.seenBadges)state.seenBadges=d.seenBadges;
       if(d.weekPlan)state.weekPlan=d.weekPlan;
@@ -1381,7 +1407,7 @@ function load(){
     state.nutri.date=todayStr(); state.nutri.water=0; state.nutri.kcal=0;
   }
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify({plan:state.plan, logs:state.logs, nutri:state.nutri, measures:state.measures, weekGoal:state.weekGoal, seenBadges:state.seenBadges, weekPlan:state.weekPlan, customEx:state.customEx, photos:state.photos, goals:state.goals, theme:state.theme, weekGoalCelebrated:state.weekGoalCelebrated})); }
+function save(){ localStorage.setItem(KEY, JSON.stringify({plan:state.plan, logs:state.logs, nutri:state.nutri, measures:state.measures, weekGoal:state.weekGoal, seenBadges:state.seenBadges, weekPlan:state.weekPlan, customEx:state.customEx, photos:state.photos, goals:state.goals, theme:state.theme, weekGoalCelebrated:state.weekGoalCelebrated, todayPick:state.todayPick})); }
 load();
 applyTheme();
 
@@ -1625,7 +1651,7 @@ function renderPlan(){
         <div class="plan-day-badge"><small>TAG</small>${i+1}</div>
         <button type="button" class="pinfo" onclick="renameDaySheet('${d.id}')" title="Umbenennen">
           <h3>${d.name}<svg class="pen" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.1 2.1 0 10-3-3L5 17v3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></h3>
-          <div class="pc">${d.ex.length} Übung${d.ex.length===1?'':'en'}${d.ex.length?' · '+totalSets(d)+' Sätze':''}</div>
+          <div class="pc">${d.ex.length} Übung${d.ex.length===1?'':'en'}${d.ex.length?' · '+muscleSummary(d):''}</div>
         </button>
         <button class="icon-btn" onclick="startWorkout('${d.id}')" title="Training starten" style="background:var(--accent);color:#fff;border:none">
           <svg viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>
@@ -1636,7 +1662,6 @@ function renderPlan(){
         <div class="plan-ex">
           <span class="pe-dot" style="background:${MUSCLES[x.muscle].color}"></span>
           <span class="pe-name">${x.name}</span>
-          <span class="pe-meta">${x.sets}×${x.reps}</span>
           <button class="pe-del" onclick="removeEx('${d.id}','${x.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>`).join('')}</div>
         <div style="padding:11px 16px"><button class="add-set" onclick="go('muscles')">+ Übung aus Bibliothek</button></div>`
@@ -1697,7 +1722,6 @@ function openDayAssign(wd){
           <div class="dx-row">
             <span class="dx-dot" style="background:${MUSCLES[x.muscle].color}"></span>
             <span class="dx-name">${x.name}</span>
-            <span class="dx-meta">${x.sets}×${x.reps}</span>
             <button class="dx-del" onclick="event.stopPropagation();removeExFromWeekDay('${wd}','${curDay.id}','${x.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
           </div>`).join(''):'<div class="dx-empty">Noch keine Übungen. Füge unten welche hinzu.</div>'}
       </div>
@@ -1899,7 +1923,7 @@ function downloadICS(filename, content){
 function dayToEvent(wdKey, day){
   const start=nextDateForWeekday(wdKey);
   const end=new Date(start.getTime()+60*60000); // 60 Min
-  const desc='Übungen:\n'+day.ex.map(x=>`• ${x.name} – ${x.sets}×${x.reps}`).join('\n');
+  const desc='Übungen:\n'+day.ex.map(x=>`• ${x.name}`).join('\n');
   return {start,end,title:'🏋️ '+day.name+' (IronPath)',desc};
 }
 function exportTrainingICS(wdKey){
@@ -2343,13 +2367,14 @@ function renderQuickLogSheet(){
       </div>`;}).join('')}</div>
     ${hasEx?'':'<div class="empty-next" style="margin-top:4px">Noch keine Übung gewählt.<br>Wähle oben eine Übung und tippe „+ Übung".</div>'}
   `);
+  markAllDeltas();
 }
 function quickAddEx(){
   const sel=document.getElementById('qlExPicker'); if(!sel||!sel.value){toast('Keine Übung verfügbar');return;}
   const ex=allExercises().find(e=>e.id===sel.value); if(!ex)return;
   const last=lastSetsFor(ex.id);
-  workoutDraft.entries.push({exId:ex.id,name:ex.name,muscle:ex.muscle,
-    sets:Array.from({length:3},(_,i)=>({w:last[i]?.w??'',r:last[i]?.r??''}))});
+  workoutDraft.entries.push({exId:ex.id,name:ex.name,muscle:ex.muscle, last,
+    sets:Array.from({length:Math.max(1,last.length)},()=>({w:'',r:''}))});
   renderQuickLogSheet();
 }
 function quickRemoveEx(ei){
@@ -2360,10 +2385,12 @@ function quickRemoveEx(ei){
 function startWorkout(dayId){
   const d=state.plan.find(x=>x.id===dayId);
   if(!d.ex.length){toast('Erst Übungen hinzufügen');return;}
-  workoutDraft={dayName:d.name, entries:d.ex.map(x=>{
+  // Felder bleiben leer – die Werte trägst du am Trainingstag ein.
+  // Die Sätze vom letzten Mal werden nur als blasser Vergleich mitgeführt.
+  workoutDraft={dayName:d.name, dayId:d.id, entries:d.ex.map(x=>{
     const last=lastSetsFor(x.id);
-    return {exId:x.id,name:x.name,muscle:x.muscle,
-      sets:Array.from({length:+x.sets||3},(_,i)=>({w:last[i]?.w??'',r:last[i]?.r??''}))};
+    return {exId:x.id,name:x.name,muscle:x.muscle, last,
+      sets:Array.from({length:Math.max(1,last.length)},()=>({w:'',r:''}))};
   })};
   renderWorkoutSheet();
 }
@@ -2401,25 +2428,63 @@ function renderWorkoutSheet(){
         </div>
       </div>`;}).join('')}</div>
   `);
+  markAllDeltas();
 }
+function nfmt(n){ return String(Math.round(n*100)/100).replace('.',','); }
+/* Ein Satz: Eingabefelder oben, darunter blass der Wert vom letzten Mal
+   (nur Anzeige, nicht editierbar) und der Vergleich in kg. */
 function setRow(ei,si,s){
-  return `<div class="set-row" id="sr-${ei}-${si}">
-    <span class="sn">${si+1}</span>
-    <input type="number" inputmode="decimal" placeholder="kg" value="${s.w}" data-ei="${ei}" data-k="w" oninput="upd(${ei},${si},'w',this.value)">
-    <input type="number" inputmode="numeric" placeholder="reps" value="${s.r}" data-ei="${ei}" data-k="r" oninput="upd(${ei},${si},'r',this.value)">
-    <button type="button" class="rm" onclick="rmSet(${ei},${si})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  const prev=((workoutDraft.entries[ei]||{}).last||[])[si];
+  const hint = prev
+    ? `zuletzt <b>${nfmt(prev.w)}</b> kg × <b>${prev.r}</b>`
+    : `<span class="sl-none">kein Vorwert</span>`;
+  return `<div class="set-block" id="sr-${ei}-${si}">
+    <div class="set-row">
+      <span class="sn">${si+1}</span>
+      <input type="number" inputmode="decimal" placeholder="kg" value="${s.w}" data-ei="${ei}" data-k="w" oninput="upd(${ei},${si},'w',this.value)">
+      <input type="number" inputmode="numeric" placeholder="Wdh." value="${s.r}" data-ei="${ei}" data-k="r" oninput="upd(${ei},${si},'r',this.value)">
+      <button type="button" class="rm" onclick="rmSet(${ei},${si})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="set-last"><span class="sl-prev">${hint}</span><span class="sd-delta"></span></div>
   </div>`;
 }
-function upd(ei,si,k,v){workoutDraft.entries[ei].sets[si][k]=v;}
+function upd(ei,si,k,v){
+  workoutDraft.entries[ei].sets[si][k]=v;
+  if(k==='w') markDelta(ei,si);
+}
+/* Vergleicht das eingetragene Gewicht mit dem vom letzten Mal und
+   hinterlegt den Satz grün (mehr), rot (weniger) oder neutral (gleich). */
+function markDelta(ei,si){
+  const en=workoutDraft && workoutDraft.entries[ei]; if(!en) return;
+  const box=document.getElementById('sr-'+ei+'-'+si); if(!box) return;
+  const badge=box.querySelector('.sd-delta');
+  box.classList.remove('up','down','same');
+  if(badge) badge.textContent='';
+  const prev=(en.last||[])[si], cur=en.sets[si];
+  if(!prev || prev.w==='' || prev.w==null) return;
+  if(!cur || cur.w==='' || cur.w==null) return;
+  const d=(+cur.w)-(+prev.w);
+  if(!isFinite(d)) return;
+  const cls = d>0?'up' : d<0?'down' : 'same';
+  box.classList.add(cls);
+  if(badge) badge.textContent = d>0 ? '▲ +'+nfmt(d)+' kg'
+                              : d<0 ? '▼ −'+nfmt(-d)+' kg'
+                              : '= gleich';
+}
+function markAllDeltas(){
+  if(!workoutDraft) return;
+  workoutDraft.entries.forEach((en,ei)=>en.sets.forEach((_,si)=>markDelta(ei,si)));
+}
 function addSet(ei){
-  const arr=workoutDraft.entries[ei].sets; const last=arr[arr.length-1]||{w:'',r:''};
-  arr.push({w:last.w,r:last.r});
+  const arr=workoutDraft.entries[ei].sets;
+  arr.push({w:'',r:''});                     // neuer Satz startet leer
   document.getElementById('sets-'+ei).insertAdjacentHTML('beforeend',setRow(ei,arr.length-1,arr[arr.length-1]));
 }
 function rmSet(ei,si){
   workoutDraft.entries[ei].sets.splice(si,1);
   // re-render that block
   document.getElementById('sets-'+ei).innerHTML=workoutDraft.entries[ei].sets.map((s,i)=>setRow(ei,i,s)).join('');
+  workoutDraft.entries[ei].sets.forEach((_,i)=>markDelta(ei,i));
 }
 /* Liest die Eingabefelder direkt aus dem DOM – unabhängig davon, ob
    change/blur schon gefeuert hat (auf dem Handy schluckt das Schließen
@@ -2621,12 +2686,22 @@ function renderDash(){
   if(!state.plan.length){
     box.innerHTML=`<div class="empty-next">Du hast noch keinen Plan.<br><button onclick="go('plan')">Plan erstellen →</button></div>`;
   } else {
-    const d=suggestNext();
+    const t=todaysPlan();
+    const wdName=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][(new Date().getDay()+6)%7];
+    const srcTxt={pick:'für heute gewählt',week:'laut Wochenplan',suggest:'Vorschlag',rest:'laut Wochenplan'}[t.src];
     box.innerHTML=`<div class="next-workout">
-      <div class="tag">Empfohlen</div>
-      <h3>${d.name}</h3>
-      <div class="meta">${d.ex.length} Übungen · ${totalSets2(d)} Sätze geplant · ${muscleSummary(d)}</div>
-      <button onclick="startWorkout('${d.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>Training starten</button>
+      <div class="nw-head">
+        <div class="tag">Heute · ${wdName} · ${srcTxt}</div>
+        <button type="button" class="nw-switch" onclick="openTodayPicker()">wechseln</button>
+      </div>
+      ${t.day ? `
+        <h3>${t.day.name}</h3>
+        <div class="meta">${t.day.ex.length} Übung${t.day.ex.length===1?'':'en'}${t.day.ex.length?' · '+muscleSummary(t.day):''}</div>
+        <button onclick="startWorkout('${t.day.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>Training starten</button>`
+      : `
+        <h3>😴 Ruhetag</h3>
+        <div class="meta">Für heute ist kein Training eingeplant.</div>
+        <button onclick="openTodayPicker()">Trotzdem trainieren</button>`}
     </div>`;
   }
   renderWeekDots();
@@ -2914,6 +2989,51 @@ function checkNewBadges(){
 }
 function logVolume(l){return l.entries.reduce((s,e)=>s+e.sets.reduce((a,st)=>a+st.w*st.r,0),0);}
 function totalSets2(d){return d.ex.reduce((s,x)=>s+(+x.sets||0),0);}
+/* Welcher Plan gilt heute?
+   1. manuelle Auswahl für den heutigen Tag  2. Wochenplan  3. Vorschlag */
+const WDKEYS=['MO','DI','MI','DO','FR','SA','SO'];
+function todaysPlan(){
+  if(state.todayPick && state.todayPick.date===todayStr()){
+    if(state.todayPick.dayId==='rest') return {day:null, src:'pick'};
+    const d=state.plan.find(x=>x.id===state.todayPick.dayId);
+    if(d) return {day:d, src:'pick'};
+  }
+  const v=state.weekPlan[WDKEYS[(new Date().getDay()+6)%7]];
+  if(v==='rest') return {day:null, src:'rest'};
+  const d=state.plan.find(x=>x.id===v);
+  if(d) return {day:d, src:'week'};
+  return {day:suggestNext(), src:'suggest'};
+}
+/* Spontan einen anderen Plan für heute wählen – der Wochenplan bleibt unangetastet. */
+function openTodayPicker(){
+  const cur=todaysPlan();
+  openSheet(`
+    <h2>Training für heute</h2>
+    <div class="sh-sub">Gilt nur für heute. Deine Wochenplanung bleibt unverändert.</div>
+    ${state.plan.map(d=>`
+      <div class="pick-ex ${cur.day&&cur.day.id===d.id?'sel':''}" onclick="pickToday('${d.id}')">
+        <div class="pe-info" style="flex:1">
+          <div class="nm">${d.name}</div>
+          <div class="mg">${d.ex.length} Übung${d.ex.length===1?'':'en'}${d.ex.length?' · '+muscleSummary(d):''}</div>
+        </div>
+      </div>`).join('')}
+    <div class="pick-ex ${!cur.day?'sel':''}" onclick="pickToday('rest')">
+      <div class="pe-info" style="flex:1"><div class="nm">😴 Ruhetag</div><div class="mg">Heute kein Training</div></div>
+    </div>
+    ${state.todayPick&&state.todayPick.date===todayStr()
+      ? `<button type="button" class="btn-ghost" onclick="clearTodayPick()">Zurück zum Wochenplan</button>` : ''}
+    <button type="button" class="btn-ghost" onclick="closeSheet()">Abbrechen</button>
+  `);
+}
+function pickToday(id){
+  state.todayPick={date:todayStr(), dayId:id};
+  save(); closeSheet(); renderDash();
+  toast(id==='rest'?'Heute Ruhetag':'Für heute gewählt');
+}
+function clearTodayPick(){
+  state.todayPick=null; save(); closeSheet(); renderDash();
+  toast('Wochenplan gilt wieder');
+}
 function muscleSummary(d){const set=[...new Set(d.ex.map(x=>MUSCLES[x.muscle].name))];return set.slice(0,3).join(', ')+(set.length>3?'…':'');}
 function suggestNext(){
   // pick plan day whose exercises were trained longest ago
