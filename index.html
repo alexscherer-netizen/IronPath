@@ -1546,7 +1546,7 @@ function setBodyView(v){
 function renderHeatmap(){
   const counts={};
   state.logs.filter(l=>withinDays(l.date,7)).forEach(l=>{
-    l.entries.forEach(e=>{counts[e.muscle]=(counts[e.muscle]||0)+e.sets.length;});
+    l.entries.forEach(e=>{counts[e.muscle]=(counts[e.muscle]||0)+exSetCount(e);});
   });
   document.querySelectorAll('.mzone').forEach(z=>{
     z.classList.remove('heat1','heat2','heat3','heat4');
@@ -2401,7 +2401,7 @@ function startWorkout(dayId){
     const done=heute && heute.entries.find(e=>e.exId===x.id);
     return {exId:x.id,name:x.name,muscle:x.muscle, last,
       sets: done && done.sets.length
-        ? done.sets.map(v=>({w:String(v.w??''), r:String(v.r??'')}))
+        ? done.sets.map(v=>({w:v.w==null?'':String(v.w), r:v.r==null?'':String(v.r)}))
         : Array.from({length:Math.max(1,last.length)},()=>({w:'',r:''}))};
   })};
   renderWorkoutSheet();
@@ -2462,9 +2462,11 @@ function nfmt(n){ return String(Math.round(n*100)/100).replace('.',','); }
    (nur Anzeige, nicht editierbar) und der Vergleich in kg. */
 function setRow(ei,si,s){
   const prev=((workoutDraft.entries[ei]||{}).last||[])[si];
-  const hint = prev
-    ? `zuletzt <b>${nfmt(prev.w)}</b> kg × <b>${prev.r}</b>`
-    : `<span class="sl-none">kein Vorwert</span>`;
+  const hasW=prev && prev.w!=null, hasR=prev && prev.r!=null;
+  const hint = hasW&&hasR ? `zuletzt <b>${nfmt(prev.w)}</b> kg × <b>${prev.r}</b>`
+             : hasR       ? `zuletzt <b>${prev.r}</b> Wdh.`
+             : hasW       ? `zuletzt <b>${nfmt(prev.w)}</b> kg`
+             : `<span class="sl-none">kein Vorwert</span>`;
   return `<div class="set-block" id="sr-${ei}-${si}">
     <div class="set-row">
       <span class="sn">${si+1}</span>
@@ -2534,10 +2536,16 @@ function saveWorkout(){
   _saving=true; setTimeout(()=>{_saving=false;},600);
   syncDraftFromDOM();
   // keep only sets with at least reps or weight
-  const entries=workoutDraft.entries.map(en=>({
-    exId:en.exId,name:en.name,muscle:en.muscle,
-    sets:en.sets.filter(s=>s.w!==''||s.r!=='').map(s=>({w:+s.w||0,r:+s.r||0}))
-  })).filter(en=>en.sets.length);
+  // Leere Felder werden als null gespeichert statt als 0, und leere Sätze
+  // MITTEN in der Übung behalten ihren Platz – sonst würde aus „Satz 3"
+  // beim erneuten Öffnen „Satz 2". Nur am Ende wird abgeschnitten.
+  const val=v=>(v===''||v==null)?null:(+v||0);
+  const entries=workoutDraft.entries.map(en=>{
+    const sets=en.sets.map(s=>({w:val(s.w), r:val(s.r)}));
+    let end=sets.length;
+    while(end>0 && sets[end-1].w===null && sets[end-1].r===null) end--;
+    return {exId:en.exId,name:en.name,muscle:en.muscle,sets:sets.slice(0,end)};
+  }).filter(en=>en.sets.some(s=>s.w!==null||s.r!==null));
   if(!entries.length){toast('Keine Sätze eingetragen');return;}
   const prevXP=totalXP();
   const idx=workoutDraft.logIdx;
@@ -2662,9 +2670,46 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('focus',()=>{ if(restInt) restTick(); });
 
 /* ═══════════════ DASHBOARD ═══════════════ */
+/* Bis vor Kurzem legte jedes Speichern am selben Tag einen NEUEN Eintrag an.
+   Dadurch zählt dasselbe Training mehrfach ins Volumen. Hier finden wir das. */
+function findDupLogs(){
+  const gruppen={};
+  state.logs.forEach((l,i)=>{
+    if(l.quick) return;
+    const key=new Date(l.date).toDateString()+'|'+(l.dayId||l.dayName||'');
+    (gruppen[key]=gruppen[key]||[]).push(i);
+  });
+  return Object.values(gruppen).filter(g=>g.length>1);
+}
+function dupExtraVolume(){
+  // Volumen, das durch Mehrfacheinträge zu viel gezählt wird
+  return findDupLogs().reduce((sum,g)=>{
+    const vols=g.map(i=>logVolume(state.logs[i]));
+    return sum + (vols.reduce((a,v)=>a+v,0) - Math.max(...vols));
+  },0);
+}
+function cleanDupLogs(){
+  const gruppen=findDupLogs();
+  if(!gruppen.length){toast('Keine Doppel gefunden');return;}
+  const anzahl=gruppen.reduce((a,g)=>a+g.length-1,0);
+  const zuviel=dupExtraVolume();
+  confirmAction('Doppelte Einträge zusammenführen?',
+    `${anzahl} ${anzahl===1?'Mehrfach-Eintrag wird':'Mehrfach-Einträge werden'} entfernt – pro Training bleibt der umfangreichste Eintrag erhalten. Das Volumen sinkt um rund ${fmt(zuviel)} kg auf den tatsächlichen Wert.`,
+    ()=>{
+      const weg=new Set();
+      gruppen.forEach(g=>{
+        let best=g[0], bestV=-1;
+        g.forEach(i=>{const v=logVolume(state.logs[i]); if(v>bestV){bestV=v;best=i;}});
+        g.forEach(i=>{ if(i!==best) weg.add(i); });
+      });
+      state.logs=state.logs.filter((_,i)=>!weg.has(i));
+      save(); closeSheet(); renderDash(); renderProgress();
+      toast(anzahl+' Doppel entfernt');
+    },'Ja, zusammenführen');
+}
 function showVolumeInfo(){
   const totalVol=state.logs.reduce((s,l)=>s+logVolume(l),0);
-  const totalSets=state.logs.reduce((s,l)=>s+l.entries.reduce((a,e)=>a+e.sets.length,0),0);
+  const totalSets=state.logs.reduce((s,l)=>s+setCount(l),0);
   const hasData = totalVol>0;
   openSheet(`
     <h2>📊 Volumen erklärt</h2>
@@ -2692,6 +2737,33 @@ function showVolumeInfo(){
       <div style="font-size:12.5px;color:var(--ink-2);margin-top:5px">aus ${totalSets} Satz${totalSets===1?'':'en'} insgesamt</div>
     </div>`:''}
 
+    ${(()=>{const d=findDupLogs(); if(!d.length) return '';
+      const n=d.reduce((a,g)=>a+g.length-1,0);
+      return `<div class="card" style="padding:15px;margin-bottom:14px;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.35)">
+        <div style="font-weight:800;font-size:14px;color:#b91c1c;margin-bottom:5px">⚠ ${n} ${n===1?'doppelter Eintrag':'doppelte Einträge'} gefunden</div>
+        <div style="font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:10px">
+          Dasselbe Training wurde an einem Tag mehrfach gespeichert und zählt deshalb mehrfach ins Volumen –
+          rund <b>${fmt(dupExtraVolume())} kg</b> zu viel.
+        </div>
+        <button type="button" class="btn-primary" style="padding:11px" onclick="cleanDupLogs()">Zusammenführen</button>
+      </div>`;})()}
+
+    ${hasData?`<div class="card" style="padding:15px;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Woraus sich die Summe ergibt</div>
+      <div style="font-size:12.5px;color:var(--ink-2)">
+        ${state.logs.slice(-20).map((l,k,arr)=>{
+          const v=logVolume(l), sn=setCount(l);
+          return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line-2)">
+            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${new Date(l.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} · ${l.dayName} <span style="color:var(--ink-3)">(${sn} ${sn===1?'Satz':'Sätze'})</span>
+            </span>
+            <b style="white-space:nowrap">${fmt(v)} kg</b></div>`;}).join('')}
+        <div style="display:flex;justify-content:space-between;padding:8px 0 0;font-weight:800">
+          <span>${state.logs.length>20?'Summe (alle '+state.logs.length+')':'Summe'}</span><span>${fmt(totalVol)} kg</span></div>
+      </div>
+      ${state.logs.length>20?'<div style="font-size:11.5px;color:var(--ink-3);margin-top:6px">Die letzten 20 Trainings sind einzeln aufgeführt.</div>':''}
+    </div>`:''}
+
     <div style="font-size:12px;color:var(--ink-3);line-height:1.6;margin-bottom:14px">
       💡 Mehr Volumen über die Zeit (mehr Gewicht, Wiederholungen oder Sätze) ist ein Zeichen für Fortschritt – achte aber auf saubere Technik statt nur auf die Zahl.
     </div>
@@ -2703,7 +2775,7 @@ function renderDash(){
   const h=new Date().getHours();
   document.getElementById('greeting').textContent = h<11?'Guten Morgen!':h<17?'Servus!':'Guten Abend!';
   const totalVol=state.logs.reduce((s,l)=>s+logVolume(l),0);
-  const totalSets=state.logs.reduce((s,l)=>s+l.entries.reduce((a,e)=>a+e.sets.length,0),0);
+  const totalSets=state.logs.reduce((s,l)=>s+setCount(l),0);
   document.getElementById('stWorkouts').textContent=state.logs.length;
   document.getElementById('stVolume').innerHTML=fmt(totalVol)+'<small>kg</small>';
   document.getElementById('stSets').textContent=totalSets;
@@ -2803,7 +2875,7 @@ function totalXP(){
   let xp=0;
   state.logs.forEach(l=>{
     xp+=100;
-    xp+=l.entries.reduce((a,e)=>a+e.sets.length,0);
+    xp+=setCount(l);
     xp+=Math.round(logVolume(l)/1000);
   });
   return xp;
@@ -2964,7 +3036,7 @@ function renderCoachTips(){
 
   // 2) Untertrainierte Muskeln (7-Tage-Heatmap)
   const counts={};
-  state.logs.filter(l=>withinDays(l.date,7)).forEach(l=>l.entries.forEach(e=>{counts[e.muscle]=(counts[e.muscle]||0)+e.sets.length;}));
+  state.logs.filter(l=>withinDays(l.date,7)).forEach(l=>l.entries.forEach(e=>{counts[e.muscle]=(counts[e.muscle]||0)+exSetCount(e);}));
   if(state.logs.some(l=>withinDays(l.date,14))){
     const neglected=Object.keys(MUSCLES).filter(m=>!counts[m]);
     if(neglected.length){
@@ -3020,6 +3092,9 @@ function checkNewBadges(){
     }
   });
 }
+/* Ein Satz zählt nur, wenn etwas drinsteht (Platzhalter-Sätze zählen nicht) */
+function setCount(l){return l.entries.reduce((a,e)=>a+e.sets.filter(s=>s.w!=null||s.r!=null).length,0);}
+function exSetCount(e){return e.sets.filter(s=>s.w!=null||s.r!=null).length;}
 function logVolume(l){return l.entries.reduce((s,e)=>s+e.sets.reduce((a,st)=>a+st.w*st.r,0),0);}
 function totalSets2(d){return d.ex.reduce((s,x)=>s+(+x.sets||0),0);}
 /* Welcher Plan gilt heute?
@@ -3434,7 +3509,7 @@ function maybeShowInstallHint(){
 
 function metricVal(l){
   if(curMetric==='volume')return logVolume(l);
-  if(curMetric==='sets')return l.entries.reduce((a,e)=>a+e.sets.length,0);
+  if(curMetric==='sets')return setCount(l);
   if(curMetric==='maxw'){let m=0;l.entries.forEach(e=>e.sets.forEach(s=>{if(s.w>m)m=s.w;}));return m;}
 }
 function drawChart(){
@@ -3480,7 +3555,7 @@ function renderLogs(){
         <span class="d">${l.dayName} · ${dstr}</span>
         <span class="vol">${fmt(logVolume(l))} kg</span>
       </div>
-      <div class="li-ex">${l.entries.map(e=>`<span>${e.name.split(' (')[0]} ${e.sets.length}×</span>`).join('')}</div>
+      <div class="li-ex">${l.entries.map(e=>`<span>${e.name.split(' (')[0]} ${exSetCount(e)}×</span>`).join('')}</div>
       <button class="btn-ghost" style="text-align:right;font-size:12px;color:var(--ink-3);padding:6px 0 0" onclick="deleteLog(${realIdx})">Löschen</button>
     </div>`;
   }).join('');
