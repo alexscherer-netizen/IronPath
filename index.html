@@ -109,7 +109,9 @@ html[data-theme="dark"] .ws-cal-btn,
 html[data-theme="dark"] .btn-add-ex,
 html[data-theme="dark"] .sw-btn{background:var(--accent);color:#fff}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
+html{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* verhindert Doppeltipp-Zoom; Auf-/Zuziehen mit zwei Fingern bleibt möglich */
+body{touch-action:manipulation}
 body{
   font-family:var(--body);
   background:var(--bg);
@@ -128,7 +130,9 @@ body::before{
 }
 h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:1.1}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-input,select,textarea{font-family:inherit;font-size:15px}
+/* 16px ist Pflicht: iOS Safari zoomt beim Antippen automatisch in jedes
+   Eingabefeld, dessen Schrift kleiner als 16px ist – und zoomt nicht zurück. */
+input,select,textarea{font-family:inherit;font-size:16px}
 .app{max-width:760px;margin:0 auto;padding:0 16px}
 
 /* ── Header ── */
@@ -384,6 +388,8 @@ html[data-theme="dark"] .level-emblem{background:linear-gradient(135deg,#262b34,
 .plan-card .ph .pinfo h3{font-size:16px;display:flex;align-items:center;gap:6px}
 .plan-card .ph .pinfo h3 .pen{width:14px;height:14px;color:var(--ink-3);flex-shrink:0;opacity:.75}
 .plan-card .ph .pinfo .pc{font-size:12.5px;color:var(--ink-3)}
+.plan-card .ph .pinfo .pc-today{font-size:11.5px;font-weight:700;color:#047857;margin-top:2px}
+html[data-theme="dark"] .plan-card .ph .pinfo .pc-today{color:#34d399}
 .plan-card .ph .pinfo:active{background:var(--surface-2)}
 .icon-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line-2)}
 .icon-btn svg{width:16px;height:16px}
@@ -466,7 +472,7 @@ html[data-theme="dark"] .level-emblem{background:linear-gradient(135deg,#262b34,
 .metric-tabs .mt{flex:1;padding:8px;font-size:12.5px;font-weight:600;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-2);color:var(--ink-2)}
 .metric-tabs .mt.active{background:var(--accent-soft);color:var(--accent-ink);border-color:#ffd1bd}
 svg.chart{width:100%;height:180px;display:block}
-.ex-picker{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-2);outline:none;font-weight:600;font-size:14px;margin-bottom:4px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%239aa0ad' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.ex-picker{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-2);outline:none;font-weight:600;font-size:16px;margin-bottom:4px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%239aa0ad' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .ex-picker:focus{border-color:var(--accent);background-color:#fff}
 /* PR cards */
 .pr-card{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:13px 15px;margin-bottom:10px}
@@ -1652,6 +1658,7 @@ function renderPlan(){
         <button type="button" class="pinfo" onclick="renameDaySheet('${d.id}')" title="Umbenennen">
           <h3>${d.name}<svg class="pen" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L19 9a2.1 2.1 0 10-3-3L5 17v3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></h3>
           <div class="pc">${d.ex.length} Übung${d.ex.length===1?'':'en'}${d.ex.length?' · '+muscleSummary(d):''}</div>
+          ${todaysLogIdx(d.id,d.name)>=0?'<div class="pc-today">✓ heute trainiert – Werte sind gespeichert</div>':''}
         </button>
         <button class="icon-btn" onclick="startWorkout('${d.id}')" title="Training starten" style="background:var(--accent);color:#fff;border:none">
           <svg viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>
@@ -2329,7 +2336,7 @@ function sheetHead(title, canSave){
 
 /* ── Quick-Log: freies Training ohne Plan ── */
 function openQuickLog(){
-  workoutDraft={dayName:'Freies Training', entries:[], quick:true};
+  workoutDraft={dayName:'Freies Training', entries:[], quick:true, logIdx:-1};
   renderQuickLogSheet();
 }
 function _quickExOptions(){
@@ -2385,17 +2392,35 @@ function quickRemoveEx(ei){
 function startWorkout(dayId){
   const d=state.plan.find(x=>x.id===dayId);
   if(!d.ex.length){toast('Erst Übungen hinzufügen');return;}
-  // Felder bleiben leer – die Werte trägst du am Trainingstag ein.
-  // Die Sätze vom letzten Mal werden nur als blasser Vergleich mitgeführt.
-  workoutDraft={dayName:d.name, dayId:d.id, entries:d.ex.map(x=>{
-    const last=lastSetsFor(x.id);
+  // Wurde dieses Training heute schon geloggt? Dann die Werte des laufenden
+  // Tages wieder laden – erst morgen startet das Training wieder leer.
+  const idx=todaysLogIdx(d.id,d.name);
+  const heute=idx>=0?state.logs[idx]:null;
+  workoutDraft={dayName:d.name, dayId:d.id, logIdx:idx, entries:d.ex.map(x=>{
+    const last=lastSetsFor(x.id, idx);          // heutigen Eintrag als Vergleich ausschließen
+    const done=heute && heute.entries.find(e=>e.exId===x.id);
     return {exId:x.id,name:x.name,muscle:x.muscle, last,
-      sets:Array.from({length:Math.max(1,last.length)},()=>({w:'',r:''}))};
+      sets: done && done.sets.length
+        ? done.sets.map(v=>({w:String(v.w??''), r:String(v.r??'')}))
+        : Array.from({length:Math.max(1,last.length)},()=>({w:'',r:''}))};
   })};
   renderWorkoutSheet();
 }
-function lastSetsFor(exId){
+/* Index des heutigen Logs für diesen Plan-Tag, sonst -1 */
+function todaysLogIdx(dayId,dayName){
+  const t=todayStr();
   for(let i=state.logs.length-1;i>=0;i--){
+    const l=state.logs[i];
+    if(l.quick) continue;
+    if(new Date(l.date).toDateString()!==t) continue;
+    if(l.dayId||dayId){ if(l.dayId===dayId) return i; }
+    else if(l.dayName===dayName) return i;
+  }
+  return -1;
+}
+function lastSetsFor(exId, skipIdx){
+  for(let i=state.logs.length-1;i>=0;i--){
+    if(i===skipIdx) continue;
     const e=state.logs[i].entries.find(en=>en.exId===exId);
     if(e)return e.sets;
   }
@@ -2405,7 +2430,9 @@ function renderWorkoutSheet(){
   clearStopwatches();
   openSheet(`
     ${sheetHead(workoutDraft.dayName, true)}
-    <div class="sh-sub">Gewicht (kg) & Wdh. pro Satz. Stoppuhr misst die Übungsdauer, der Pause-Button startet den Countdown.</div>
+    <div class="sh-sub">${workoutDraft.logIdx>=0
+      ? 'Du hast dieses Training heute schon geloggt – deine Werte sind geladen. Speichern aktualisiert den Eintrag von heute.'
+      : 'Gewicht (kg) &amp; Wdh. pro Satz. Stoppuhr misst die Übungsdauer, der Pause-Button startet den Countdown.'}</div>
     <div id="wkBody">${workoutDraft.entries.map((en,ei)=>{
       const rest=restForLevel((allExercises().find(e=>e.id===en.exId)||{}).lvl);
       return `
@@ -2513,9 +2540,15 @@ function saveWorkout(){
   })).filter(en=>en.sets.length);
   if(!entries.length){toast('Keine Sätze eingetragen');return;}
   const prevXP=totalXP();
-  state.logs.push({date:new Date().toISOString(), dayName:workoutDraft.dayName, entries});
+  const idx=workoutDraft.logIdx;
+  const fortsetzung = idx>=0 && state.logs[idx];
+  const rec={date: fortsetzung?state.logs[idx].date:new Date().toISOString(),
+             dayName:workoutDraft.dayName, dayId:workoutDraft.dayId,
+             quick:!!workoutDraft.quick, entries};
+  if(fortsetzung) state.logs[idx]=rec;   // gleicher Tag = derselbe Eintrag
+  else state.logs.push(rec);
   save();closeSheet();workoutDraft=null;
-  toast('💪 Training gespeichert!');
+  toast(fortsetzung?'💪 Training aktualisiert!':'💪 Training gespeichert!');
   checkNewBadges();
   checkRankUp(prevXP);
   checkWeekGoalReached();
@@ -2697,7 +2730,7 @@ function renderDash(){
       ${t.day ? `
         <h3>${t.day.name}</h3>
         <div class="meta">${t.day.ex.length} Übung${t.day.ex.length===1?'':'en'}${t.day.ex.length?' · '+muscleSummary(t.day):''}</div>
-        <button onclick="startWorkout('${t.day.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>Training starten</button>`
+        <button onclick="startWorkout('${t.day.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 5l11 7-11 7V5z" fill="currentColor"/></svg>${todaysLogIdx(t.day.id,t.day.name)>=0?'Training fortsetzen':'Training starten'}</button>`
       : `
         <h3>😴 Ruhetag</h3>
         <div class="meta">Für heute ist kein Training eingeplant.</div>
